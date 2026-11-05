@@ -15,6 +15,7 @@ import { Service } from "@opencode/client/effect/service"
 import { OpenCode } from "@opencode/client/promise"
 import { findSession } from "../../session-target"
 import { errorMessage } from "../../util/error"
+import { Dictation, type DictationHost } from "../../dictation"
 
 export default Runtime.handler(Commands, (input) =>
   Effect.gen(function* () {
@@ -93,15 +94,30 @@ export default Runtime.handler(Commands, (input) =>
     const runFork = Effect.runForkWith(context)
     const runPromise = Effect.runPromiseWith(context)
     const service = server.service
+    const voice: { current?: Promise<DictationHost> } = {}
+    yield* Effect.addFinalizer(() => Effect.promise(async () => {
+      const host = await voice.current?.catch(() => undefined)
+      host?.close()
+    }))
     yield* run({
       app: {
         name: process.env.OPENCODE_CLIENT ?? OPENCODE_ARTIFACT,
         version: OPENCODE_VERSION,
         channel: process.env.OPENCODE_TUI_CHANNEL ?? OPENCODE_CHANNEL,
         highlights: OPENCODE_HIGHLIGHTS,
+        dictate: (options) => {
+          voice.current ??= runPromise(Dictation.make()).catch((error) => {
+            voice.current = undefined
+            throw error
+          })
+
+          return voice.current.then((host) => host.capture(options))
+        },
       },
       server: {
         endpoint: server.endpoint,
+        // Managed and standalone servers run here; an explicit --server may be on another machine.
+        local: requestedServer === undefined,
         service: service
           ? {
               reconnect: (signal) => runServicePromise(service.reconnect(), { signal }),

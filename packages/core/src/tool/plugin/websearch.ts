@@ -2,12 +2,13 @@ export * as WebSearchTool from "./websearch.js"
 
 import type { Context } from "@opencode/plugin/effect/plugin"
 import type { SessionHooks } from "@opencode/plugin/effect/session"
-import { ToolFailure } from "@opencode/ai"
+import { ToolFailure } from "@opencode/ai/effect"
 import { Effect, Schema, Semaphore } from "effect"
 import { HttpClientError } from "effect/http"
 import { Form } from "../../form.js"
 import { Permission } from "../../permission.js"
 import { WebSearch } from "../../websearch.js"
+import { Product } from "@opencode/util/product"
 
 export const name = "websearch"
 export const NO_RESULTS = "No search results found. Please try a different query."
@@ -79,7 +80,7 @@ export const Plugin = {
                           fields: [
                             {
                               key: "choice",
-                              description: "Allow OpenCode to search the web for up-to-date information?",
+                              description: `Allow ${Product.name} to search the web for up-to-date information?`,
                               type: "string",
                               required: true,
                               custom: false,

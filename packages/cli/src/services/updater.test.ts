@@ -36,8 +36,11 @@ describe("updater", () => {
     expect(action("1.2.3", "1.2.3", "notify")).toBe("none")
   })
 
-  test("reports when latest is lower (rollback)", () => {
-    expect(action("1.2.4", "1.2.3", "notify")).toBe("notify")
+  test("does not downgrade when the registry latest is older", () => {
+    expect(action("1.2.4", "1.2.3", "notify")).toBe("none")
+    expect(action("2.0.2", "2.0.1", "auto")).toBe("none")
+    expect(action("2.0.2", "1.99.99", "auto")).toBe("none")
+    expect(action("2.10.0", "2.9.99", "auto")).toBe("none")
   })
 
   test("accepts strict release version variants", () => {

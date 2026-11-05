@@ -1,4 +1,4 @@
-import { createEffect, mergeProps, on, onCleanup, onMount, Show, splitProps, type ComponentProps } from "solid-js"
+import { createEffect, mergeProps, on, onCleanup, onMount, Show, splitProps, type ComponentProps, type JSX } from "solid-js"
 import { Portal } from "solid-js/web"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { createStore } from "solid-js/store"
@@ -128,6 +128,10 @@ export function scrollOffsetFromThumbPointer(input: {
   return progress * Math.max(0, input.scrollSize - (input.scrollClientSize ?? input.clientSize))
 }
 
+/**
+ * A scroll container that draws its own thumb, for a thumb in an external track or one corrected for virtualized
+ * rows. Everything else scrolls with a plain `overflow: auto` element, which `styles/scrollbar.css` already styles.
+ */
 export function ScrollView(props: ScrollViewProps) {
   const i18n = useI18n()
   const merged = mergeProps({ orientation: "vertical", thumbVisibility: "hover" }, props)
@@ -170,6 +174,7 @@ export function ScrollView(props: ScrollViewProps) {
 
   const [state, setState] = createStore({
     isHovered: false,
+    // SAFETY: dragging starts absent and pointer handlers assign one of the two declared orientations.
     dragging: undefined as "vertical" | "horizontal" | undefined,
     isScrolling: false,
     verticalThumbSize: 0,
@@ -262,7 +267,7 @@ export function ScrollView(props: ScrollViewProps) {
     // appears later), after layout. Measuring here as well would force a synchronous layout per
     // ScrollView while the page is still rendering.
     createResizeObserver(
-      () => [viewportRef, viewportRef.firstElementChild, thumbMount()].filter(Boolean) as HTMLElement[],
+      () => [viewportRef, viewportRef.firstElementChild, thumbMount()].filter((element): element is HTMLElement => element instanceof HTMLElement),
       updateThumb,
     )
   })
@@ -397,8 +402,7 @@ export function ScrollView(props: ScrollViewProps) {
 
   // Keybinds implementation
   // We ensure the viewport has a tabindex so it can receive focus
-  // We can also explicitly catch PageUp/Down if we want smooth scroll or specific behavior,
-  // but native usually handles this perfectly. Let's explicitly ensure it behaves well.
+  // Keyboard scrolling jumps immediately, like the wheel, instead of animating.
   const onKeyDown = (e: KeyboardEvent) => {
     // If user is focused on an input inside the scroll view, don't hijack keys
     if (document.activeElement && ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) {
@@ -434,27 +438,27 @@ export function ScrollView(props: ScrollViewProps) {
     switch (next) {
       case "page-down":
         e.preventDefault()
-        viewportRef.scrollBy({ top: scrollAmount, behavior: "smooth" })
+        viewportRef.scrollBy({ top: scrollAmount })
         break
       case "page-up":
         e.preventDefault()
-        viewportRef.scrollBy({ top: -scrollAmount, behavior: "smooth" })
+        viewportRef.scrollBy({ top: -scrollAmount })
         break
       case "home":
         e.preventDefault()
-        viewportRef.scrollTo({ top: 0, behavior: "smooth" })
+        viewportRef.scrollTo({ top: 0 })
         break
       case "end":
         e.preventDefault()
-        viewportRef.scrollTo({ top: viewportRef.scrollHeight, behavior: "smooth" })
+        viewportRef.scrollTo({ top: viewportRef.scrollHeight })
         break
       case "up":
         e.preventDefault()
-        viewportRef.scrollBy({ top: -lineAmount, behavior: "smooth" })
+        viewportRef.scrollBy({ top: -lineAmount })
         break
       case "down":
         e.preventDefault()
-        viewportRef.scrollBy({ top: lineAmount, behavior: "smooth" })
+        viewportRef.scrollBy({ top: lineAmount })
         break
     }
   }
@@ -482,29 +486,41 @@ export function ScrollView(props: ScrollViewProps) {
           updateThumb()
           markScrolling()
 
-          if (typeof events.onScroll === "function") events.onScroll(e as any)
+          // SAFETY: Solid declares this prop as a callback or bound tuple; this discriminates that declared handler union.
+          // oxlint-disable-next-line anti-slop/no-runtime-typeof -- see SAFETY above
+          if (typeof events.onScroll === "function") events.onScroll(e)
         }}
-        onWheel={(e) => {
-          markScrolling()
-          const handler = events.onWheel
+        // Passive so the compositor never waits on the main thread to scroll; onWheel cannot cancel.
+        on:wheel={{
+          passive: true,
+          handleEvent: (e) => {
+            markScrolling()
+            const handler = events.onWheel
+            // SAFETY: this native listener is attached to the viewport div; Solid expects the same targeted wheel event.
+            const event = e as Parameters<JSX.EventHandler<HTMLDivElement, WheelEvent>>[0]
 
-          if (typeof handler === "function") handler(e as any)
+            // SAFETY: Solid declares this prop as a callback or bound tuple; this discriminates that declared handler union.
+            // oxlint-disable-next-line anti-slop/no-runtime-typeof -- see SAFETY above
+            if (typeof handler === "function") handler(event)
 
-          if (Array.isArray(handler)) handler[0](handler[1], e as any)
+            if (Array.isArray(handler)) handler[0](handler[1], event)
+          },
         }}
-        onTouchStart={events.onTouchStart as any}
-        onTouchMove={events.onTouchMove as any}
-        onTouchEnd={events.onTouchEnd as any}
-        onTouchCancel={events.onTouchCancel as any}
-        onPointerDown={events.onPointerDown as any}
-        onClick={events.onClick as any}
+        onTouchStart={events.onTouchStart}
+        onTouchMove={events.onTouchMove}
+        onTouchEnd={events.onTouchEnd}
+        onTouchCancel={events.onTouchCancel}
+        onPointerDown={events.onPointerDown}
+        onClick={events.onClick}
         tabIndex={0}
         role="region"
         aria-label={i18n.t("ui.scrollView.ariaLabel")}
         onKeyDown={(e) => {
           onKeyDown(e)
 
-          if (typeof events.onKeyDown === "function") events.onKeyDown(e as any)
+          // SAFETY: Solid declares this prop as a callback or bound tuple; this discriminates that declared handler union.
+          // oxlint-disable-next-line anti-slop/no-runtime-typeof -- see SAFETY above
+          if (typeof events.onKeyDown === "function") events.onKeyDown(e)
         }}
       >
         {local.children}

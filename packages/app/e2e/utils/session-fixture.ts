@@ -1,3 +1,4 @@
+import { Match } from "effect"
 import type { Page } from "@playwright/test"
 import type { JsonValue, SessionMessageAssistant, SessionMessageInfo } from "@opencode/client/promise"
 import { base64Encode } from "@opencode/util/encode"
@@ -51,9 +52,9 @@ type MessagePart =
       name: string
       state: {
         status: "completed"
-        input: Record<string, unknown>
+        input: Record<string, JsonValue>
         content: [{ type: "text"; text: string }]
-        metadata: Record<string, unknown>
+        metadata: Record<string, JsonValue>
       }
       time: { created: number; ran: number; completed: number }
     }
@@ -77,7 +78,7 @@ function id(prefix: string, value: number) {
   return `${prefix}_smoke_${String(value).padStart(4, "0")}`
 }
 
-function userMessage(_sessionID: string, index: number, textLength: number, diffs: unknown[] = []): SessionMessageInfo {
+function userMessage(_sessionID: string, index: number, textLength: number, diffs: JsonValue[] = []): SessionMessageInfo {
   const messageID = id("msg_user", index)
 
   return {
@@ -85,7 +86,7 @@ function userMessage(_sessionID: string, index: number, textLength: number, diff
     type: "user",
     time: { created: 1700000000000 + index * 10_000 },
     text: lorem(index, textLength),
-    metadata: diffs.length ? { diffs: diffs as JsonValue } : undefined,
+    metadata: diffs.length ? { diffs: diffs } : undefined,
   }
 }
 
@@ -118,7 +119,7 @@ function messageContent(part: MessagePart): SessionMessageAssistant["content"][n
       type: "reasoning",
       text: part.text ?? "",
       time: part.time
-        ? { created: part.time.start, ...(part.time.end === undefined ? {} : { completed: part.time.end }) }
+        ? { created: part.time.start, completed: part.time.end }
         : undefined,
     }
 
@@ -129,9 +130,9 @@ function messageContent(part: MessagePart): SessionMessageAssistant["content"][n
     time: part.time,
     state: {
       status: "completed",
-      input: part.state.input as Record<string, JsonValue>,
+      input: part.state.input,
       content: part.state.content,
-      metadata: part.state.metadata as Record<string, JsonValue>,
+      metadata: part.state.metadata,
     },
   }
 }
@@ -164,9 +165,9 @@ function toolPart(
   index: number,
   partIndex: number,
   tool: string,
-  input: Record<string, unknown>,
+  input: Record<string, JsonValue>,
   outputLength = 160,
-  metadataOverride?: Record<string, unknown>,
+  metadataOverride?: Record<string, JsonValue>,
 ): MessagePart {
   const metadata =
     metadataOverride ??
@@ -213,21 +214,27 @@ function patchFile(seed: number, status: "added" | "modified" | "deleted") {
 }
 
 function fileDiff(file: string, seed: number) {
-  const lines = seed % 12 === 0 ? 300 : seed % 8 === 0 ? 2 : 38
+  const lines = Match.value(seed).pipe(
+    Match.when((value) => value % 12 === 0, () => 300),
+    Match.when((value) => value % 8 === 0, () => 2),
+    Match.orElse(() => 38),
+  )
+
   const before = code(seed, lines, seed % 10 === 0 ? 280 : 32)
 
-  const after =
-    lines === 2
-      ? before.replace("value1", "updatedValue1")
-      : lines === 300
-        ? code(seed + 1, lines, seed % 10 === 0 ? 280 : 32)
-        : before.replace("value4", "updatedValue4").replace("value20", "updatedValue20")
+  const after = Match.value(lines).pipe(
+    Match.when(2, () => before.replace("value1", "updatedValue1")),
+    Match.when(300, () => code(seed + 1, lines, seed % 10 === 0 ? 280 : 32)),
+    Match.orElse(() => before.replace("value4", "updatedValue4").replace("value20", "updatedValue20")),
+  )
+
+  const smallChanges = lines === 2 ? 1 : 2
 
   return {
     file,
     status: "modified" as const,
-    additions: lines === 300 ? 300 : lines === 2 ? 1 : 2,
-    deletions: lines === 300 ? 300 : lines === 2 ? 1 : 2,
+    additions: lines === 300 ? 300 : smallChanges,
+    deletions: lines === 300 ? 300 : smallChanges,
     patch: createTwoFilesPatch(`a/${file}`, `b/${file}`, before, after),
   }
 }
@@ -327,11 +334,11 @@ const childMessages = Array.from({ length: 4 }, (_, index) => [
   assistantMessage(childID, index + 2000, id("msg_user", index + 2000), [textPart(index + 2000, 0, 240)]),
 ]).flat()
 
-const messages: Record<string, SessionMessageInfo[]> = {
-  [sourceID]: sourceMessages,
-  [targetID]: targetMessages,
-  [childID]: childMessages,
-}
+const messages = Object.fromEntries<SessionMessageInfo[]>([
+  [sourceID, sourceMessages],
+  [targetID, targetMessages],
+  [childID, childMessages],
+])
 
 export const fixture = {
   directory,
@@ -341,7 +348,7 @@ export const fixture = {
     worktree: directory,
     vcs: "git",
     name: "smoke-project",
-    time: { created: 1700000000000, updated: 1700000000000 },
+    time: { created: 1700000000000, updated: 1700000000000, active: 1700000000000 },
     sandboxes: [],
   },
   provider: {
@@ -363,7 +370,7 @@ export const fixture = {
       directory,
       title: "Uncommitted changes inquiry",
       version: "dev",
-      time: { created: 1700000000000, updated: 1700000000000 },
+      time: { created: 1700000000000, updated: 1700000000000, active: 1700000000000 },
     },
     {
       id: targetID,
@@ -448,13 +455,6 @@ export function mockStressTimeline(page: Page, input: Partial<MockServerConfig> 
 export async function installStressSessionTabs(page: Page, input?: { draftID?: string; sessionIDs?: string[] }) {
   await page.addInitScript(
     ({ directory, sessionIDs, dirBase64, server, draftID }) => {
-      localStorage.setItem(
-        "opencode.global.dat:server",
-        JSON.stringify({
-          projects: { local: [{ worktree: directory, expanded: true }] },
-          lastProject: { local: directory },
-        }),
-      )
       localStorage.setItem(
         "opencode.window.browser.dat:tabs",
         JSON.stringify([

@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.sessionReview.title": "Modificări sesiune",
   "ui.sessionReview.title.git": "Modificări Git",
   "ui.sessionReview.title.branch": "Modificări ramură",
@@ -198,7 +198,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(niciun răspuns)",
   "ui.question.review.notAnswered": "(fără răspuns)",
   "ui.question.multiHint": "Selectează toate răspunsurile corecte",
-  "ui.question.singleHint": "Selectează un răspuns",
   "ui.question.custom.placeholder": "Scrie răspunsul…",
   "ui.tool.loadedFile": "{{path}} a fost încărcat",
   "ui.tool.loadedSkill": "Abilitatea {{name}} a fost încărcată",

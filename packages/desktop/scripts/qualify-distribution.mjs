@@ -4,6 +4,7 @@ import { access, mkdtemp, mkdir, readFile, readdir, stat, writeFile } from "node
 import { tmpdir } from "node:os"
 import path from "node:path"
 import net from "node:net"
+import { createServer } from "node:http"
 import { fileURLToPath } from "node:url"
 import { windowsCliScript } from "./vscode-cli.mjs"
 
@@ -69,6 +70,10 @@ const qualificationFile = path.join(output, "packages/qualification.json")
 const result = JSON.parse(await readFile(qualificationFile, "utf8"))
 
 delete result.failure
+result.desktopExecution = "pending"
+delete result.desktopWindowTitle
+delete result.desktopBranding
+delete result.mcpUrlConnection
 
 const platform = `${process.platform}-${process.arch}`
 
@@ -82,7 +87,7 @@ const desktop = path.join(
   ...new Map([
     ["win32", [process.arch === "arm64" ? "win-arm64-unpacked" : "win-unpacked", "SubiCode.exe"]],
     ["darwin", [process.arch === "arm64" ? "mac-arm64" : "mac", "SubiCode.app/Contents/MacOS/SubiCode"]],
-    ["linux", [process.arch === "arm64" ? "linux-arm64-unpacked" : "linux-unpacked", desktopId]],
+    ["linux", [process.arch === "arm64" ? "linux-arm64-unpacked" : "linux-unpacked", desktopId.replace(/\.desktop$/, "")]],
   ]).get(process.platform),
 )
 
@@ -133,6 +138,10 @@ try {
   const errors = []
   page.on("pageerror", (error) => errors.push(error.message))
   await page.locator('[data-component="composer"]').waitFor({ timeout: 60000 })
+  await expect(page).toHaveTitle("SubiCode")
+  await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(window => window.getTitle()))).toEqual(["SubiCode"])
+  const updaterConfig = await readFile(path.join(path.dirname(desktop), "resources/app-update.yml"), "utf8").catch(() => "")
+  result.desktopWindowTitle = "passed: HTML title and native taskbar/window title identify SubiCode"
   console.log("Qualification: desktop composer is ready")
   const expiredPairing = await fetch(`http://127.0.0.1:${servicePort}/auth/connect/qualification-expired`, {
     headers: { accept: "text/html" },
@@ -142,6 +151,12 @@ try {
     "This pairing link expired or was already used. Run `subi pair` to get a new one.",
   )
   result.desktopRecovery = "passed: bundled server pairing recovery uses the subi command"
+  // Enter a draft explicitly; the home screen can replace the startup draft while projects finish loading.
+  await page.locator(".subi-new-task").click()
+  await expect(page.locator('[data-component="new-session"]')).toBeVisible()
+  await expect(page.locator(".subi-workspace-sidebar")).toBeVisible()
+  await expect(page.getByRole("heading", { name: "What are we building?", exact: true })).toBeVisible()
+  await page.screenshot({ path: path.join(output, "subicode-welcome-ui.png") })
   const mode = page.getByRole("button", { name: "Choose agent", exact: true })
   await expect(mode).toBeVisible()
   await mode.click()
@@ -171,6 +186,17 @@ try {
     await settings.getByRole("tab", { name, exact: true }).click()
     await expect(settings.locator(".settings-breadcrumb")).toContainText(name)
     await expect(settings).not.toContainText(/opencode/i)
+    await expect(page).toHaveTitle("SubiCode")
+    if (name === "Preferences" && result.desktopUpdateDelivery === "manual-github") {
+      await expect(settings.locator('[data-action="settings-check-updates"]')).toBeEnabled({ timeout: 30000 })
+      await expect(settings).toContainText("Check SubiCode releases on GitHub")
+      await expect(settings.getByRole("button", { name: "Install and restart", exact: true })).toHaveCount(0)
+      result.manualUpdatePolicy = "passed: GitHub metadata check and manual download UI; no install/restart action"
+    }
+    if (name === "Preferences" && result.desktopUpdateDelivery !== "manual-github" && process.platform === "win32" && !/^publisherName:/m.test(updaterConfig)) {
+      await expect(settings.locator('[data-action="settings-check-updates"]')).toBeDisabled()
+      result.unsignedUpdatePolicy = "passed: automatic update action disabled without a Windows publisher identity"
+    }
   }
 
   await settings.getByRole("tab", { name: "Extensions", exact: true }).click()
@@ -179,8 +205,45 @@ try {
   await expect(form.getByLabel("App name", { exact: true })).toBeVisible()
   await expect(form.getByLabel("MCP server URL", { exact: true })).toBeVisible()
   await expect(form.getByRole("button", { name: "Save and connect", exact: true })).toBeVisible()
+  await page.screenshot({ path: path.join(output, "subicode-mcp-url-ui.png") })
   await expect(form).not.toContainText(/opencode/i)
-  await form.getByRole("button", { name: "Cancel", exact: true }).click()
+  let initialized = 0
+  const mcpEndpoint = createServer(async (request, response) => {
+    if (request.method !== "POST") {
+      response.writeHead(405)
+      return response.end()
+    }
+    const chunks = []
+    for await (const chunk of request) chunks.push(chunk)
+    const message = JSON.parse(Buffer.concat(chunks).toString("utf8"))
+    if (message.id === undefined) {
+      response.writeHead(202)
+      return response.end()
+    }
+    if (message.method === "initialize") initialized++
+    const result = message.method === "initialize"
+      ? { protocolVersion: "2025-11-25", capabilities: { tools: {} }, serverInfo: { name: "Qualification Docs", version: "1" } }
+      : message.method === "tools/list" ? { tools: [] } : {}
+    response.setHeader("Content-Type", "application/json")
+    response.end(JSON.stringify({ jsonrpc: "2.0", id: message.id, result }))
+  })
+  await new Promise(resolve => mcpEndpoint.listen(0, "127.0.0.1", resolve))
+  try {
+    await form.getByLabel("App name", { exact: true }).fill("Qualification Docs")
+    await form.getByLabel("MCP server URL", { exact: true }).fill(`http://127.0.0.1:${mcpEndpoint.address().port}/mcp`)
+    await form.getByRole("button", { name: "Save and connect", exact: true }).click()
+    await expect(form).toBeHidden()
+    await expect(settings.getByText("Qualification Docs", { exact: true })).toBeVisible()
+    await expect(settings.getByRole("status").filter({ hasText: /^Connected$/ })).toBeVisible({ timeout: 30000 })
+    expect(initialized).toBeGreaterThan(0)
+    await page.screenshot({ path: path.join(output, "subicode-mcp-connected-ui.png") })
+    await settings.getByRole("button", { name: "Remove", exact: true }).click()
+    await expect(settings.getByText("Qualification Docs", { exact: true })).toHaveCount(0)
+    result.mcpUrlConnection = "passed: URL entry, Save and connect, MCP initialization, connected status and removal against an isolated local server"
+  } finally {
+    mcpEndpoint.closeAllConnections()
+    await new Promise(resolve => mcpEndpoint.close(resolve))
+  }
   const pluginFolder = path.join(fixture, "fixture-plugin")
   const skillFolder = path.join(fixture, "fixture-skills")
   await mkdir(pluginFolder)
@@ -209,6 +272,24 @@ try {
     await expect(settings.getByText("native-setup-fixture", { exact: true })).toHaveCount(0)
   }
   await page.screenshot({ path: path.join(output, "desktop-qualification.png") })
+  // Reproduce the taskbar caption with a named session without making any model request.
+  const greeting = await page.evaluate(async ({ url, directory }) => {
+    const response = await fetch(`${url}/api/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Greeting", location: { directory } }),
+    })
+    if (!response.ok) throw new Error(`Fixture session creation failed: ${response.status}`)
+    return response.json()
+  }, { url: `http://127.0.0.1:${servicePort}`, directory: fixture })
+  expect(greeting.data.title).toBe("Greeting")
+  await page.locator(".subi-workspace-nav").getByRole("button", { name: "Recent tasks", exact: true }).click()
+  await page.getByText("Greeting", { exact: true }).first().click()
+  await expect(page).toHaveTitle("Greeting · SubiCode")
+  await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(window => window.getTitle()))).toEqual(["Greeting · SubiCode"])
+  await page.screenshot({ path: path.join(output, "subicode-greeting-caption.png") })
+  result.desktopSessionWindowTitle = "passed: Greeting · SubiCode in HTML and native Windows taskbar/window title"
+  console.log("Qualification: named session native caption passed")
   console.log("Qualification: desktop UI checks completed")
 
   if (errors.length) throw new Error(errors.join("\n"))
@@ -227,6 +308,10 @@ try {
     })),
   )
   await closeDesktop()
+  if (process.argv.includes("--desktop-only")) {
+    await writeFile(qualificationFile, JSON.stringify(result, null, 2) + "\n")
+    console.log("Qualification: desktop-only checks completed; extension execution remains pending")
+  } else {
   console.log("Qualification: installing and checking the VS Code extension")
   // Optional existing host avoids a large editor download for offline/local qualification.
   const downloadedCode = process.argv[3] ?? (await vscode.downloadAndUnzipVSCode("stable"))
@@ -305,6 +390,7 @@ try {
   })
   delete result.failure
   result.extensionExecution = "passed: packaged VSIX installation, bundled CLI startup and terminal reuse"
+  }
 } catch (error) {
   result.failure = String(error)
   throw error

@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.common.fileCount.one": "{{count}} fil",
   "ui.common.fileCount.other": "{{count}} filer",
   "ui.messagePart.compaction.started": "Sessionskomprimering startade",
@@ -227,7 +227,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(inget svar)",
   "ui.question.review.notAnswered": "(ej besvarad)",
   "ui.question.multiHint": "Välj alla svar som gäller",
-  "ui.question.singleHint": "Välj ett svar",
   "ui.question.custom.placeholder": "Skriv ditt svar…",
 
   "ui.messagePart.context.match.one": "({{count}} träff)",

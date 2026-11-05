@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.common.fileCount.one": "{{count}} bestand",
   "ui.common.fileCount.other": "{{count}} bestanden",
   "ui.messagePart.compaction.started": "Sessieverdichting is gestart",
@@ -227,7 +227,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(geen antwoord)",
   "ui.question.review.notAnswered": "(niet beantwoord)",
   "ui.question.multiHint": "Selecteer alle antwoorden die van toepassing zijn",
-  "ui.question.singleHint": "Selecteer één antwoord",
   "ui.question.custom.placeholder": "Typ je antwoord…",
 
   "ui.messagePart.context.match.one": "({{count}}-overeenkomst)",

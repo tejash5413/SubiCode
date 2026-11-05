@@ -2,7 +2,7 @@ import type { AsyncStorage, PersistenceSyncAPI, SyncStorage } from "@solid-primi
 import { getOwner, onCleanup, untrack } from "solid-js"
 import { reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 
-export const persistSaveDelay = 100
+const persistSaveDelay = 100
 
 const pending = new Set<() => void>()
 
@@ -68,16 +68,17 @@ export function persistStore<T extends object>(input: {
     void input.storage.setItem(input.name, next)
   }
 
-  // Solid's setter overloads are too deep to spread generically; the wrapper only forwards.
-  const apply = input.setStore as unknown as (...values: unknown[]) => void
+  // SAFETY: this wrapper forwards the exact setter argument tuple unchanged; overloads are restored on return.
+  const apply = input.setStore as (...values: Parameters<SetStoreFunction<T>>) => void
 
-  const setStore = ((...values: unknown[]) => {
+  // SAFETY: the wrapper only forwards arguments and schedules persistence, preserving the original setter overloads.
+  const setStore = ((...values: Parameters<SetStoreFunction<T>>) => {
     apply(...values)
     dirty = true
     touched = true
     pending.add(save)
     timer ??= setTimeout(save, delay)
-  }) as unknown as SetStoreFunction<T>
+  }) as SetStoreFunction<T>
 
   const hydrate = (raw: string) => {
     last = raw

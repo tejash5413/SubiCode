@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.messagePart.tools.used.few": "Použité {{count}}×: {{tools}}",
   "ui.messagePart.tools.used.many": "Použité {{count}}×: {{tools}}",
   "ui.common.fileCount.few": "{{count}} súbory",
@@ -218,7 +218,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(žiadna odpoveď)",
   "ui.question.review.notAnswered": "(nezodpovedané)",
   "ui.question.multiHint": "Vyberte všetky platné odpovede",
-  "ui.question.singleHint": "Vyberte jednu odpoveď",
   "ui.question.custom.placeholder": "Napíšte svoju odpoveď…",
   "ui.messagePart.context.match.one": "({{count}} zhoda)",
   "ui.messagePart.context.match.other": "({{count}} zhôd)",

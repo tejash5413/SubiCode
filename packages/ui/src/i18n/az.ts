@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.sessionReview.title": "Sessiya dəyişiklikləri",
   "ui.sessionReview.title.git": "Git dəyişiklikləri",
   "ui.sessionReview.title.branch": "Branch dəyişiklikləri",
@@ -190,7 +190,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(cavab yoxdur)",
   "ui.question.review.notAnswered": "(cavablanmayıb)",
   "ui.question.multiHint": "Uyğun gələn bütün cavabları seçin",
-  "ui.question.singleHint": "Bir cavab seçin",
   "ui.question.custom.placeholder": "Cavabınızı yazın…",
   "ui.messagePart.context.match.one": "({{count}} uyğunluq)",
   "ui.messagePart.context.match.other": "({{count}} uyğunluq)",

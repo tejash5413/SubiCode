@@ -6,6 +6,7 @@ import path from "node:path"
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
+import { writeUpdateFixture } from "../../../script/fixtures/desktop-updates.mjs"
 
 const script = fileURLToPath(new URL("../../../script/publish-subicode-desktop.mjs", import.meta.url))
 const platforms = ["win32-x64", "win32-arm64", "darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"]
@@ -16,11 +17,12 @@ test("Linux x86_64 AppImage and RPM files survive staging and release preflight"
     await mkdir(path.join(candidate, "desktop"), { recursive: true })
     await mkdir(path.join(candidate, "packages"))
     await writeFile(path.join(candidate, "packages/qualification.json"), JSON.stringify({
-      version: "2.0.1", channel: "prod", platform: "linux-x64", npm: { sourceCommit: "1".repeat(40) },
+      version: "2.0.2", channel: "prod", platform: "linux-x64", npm: { sourceCommit: "1".repeat(40) },
       nativeExecution: "passed: CLI", desktopExecution: "passed: desktop", extensionExecution: "passed: extension",
     }))
     const names = ["subi-desktop-linux-x86_64.AppImage", "subi-desktop-linux-x86_64.rpm", "subi-desktop-linux-amd64.deb"]
     for (const name of names) await writeFile(path.join(candidate, "desktop", name), name)
+    await writeUpdateFixture(path.join(candidate, "desktop"), names.map(filename => ({ product: "desktop", platform: "linux", arch: "x64", version: "2.0.2", filename })))
     await writeFile(path.join(candidate, "subicode-linux-x64.vsix"), "extension")
     const destination = path.join(root, "downloads/subicode-downloads-linux-x64")
     const prepare = fileURLToPath(new URL("../../../script/prepare-desktop-downloads.mjs", import.meta.url))
@@ -47,11 +49,12 @@ async function fixture(mutation) {
       const filename = product === "desktop" ? `subi-desktop-${platform}-${arch}.zip` : `subicode-${target}.vsix`
       const bytes = Buffer.from(`${product} artifact for ${target}`)
       await writeFile(path.join(directory, filename), bytes)
-      downloads.push({ product, platform, arch, version: "2.0.1", filename, size: bytes.length,
+      downloads.push({ product, platform, arch, version: "2.0.2", filename, size: bytes.length,
         sha256: createHash("sha256").update(bytes).digest("hex"),
-        url: `https://github.com/tejash5413/Subi-Code/releases/download/v2.0.1/${filename}` })
+        url: `https://github.com/tejash5413/SubiCode/releases/download/v2.0.2/${filename}` })
     }
     const record = { sourceCommit: "1".repeat(40), nativeExecution: "passed: native CLI", desktopExecution: "passed: desktop", extensionExecution: "passed: extension", downloads }
+    record.updateFiles = await writeUpdateFixture(path.join(directory, "updates"), downloads, directory)
     if (target === "linux-arm64") mutation?.(record)
     await writeFile(path.join(directory, `downloads-${target}.json`), JSON.stringify(record))
   }
@@ -65,9 +68,9 @@ test("release preflight creates the public manifest only from six qualified, unc
   const manifest = JSON.parse(await readFile(path.join(root, "subicode-release.json"), "utf8"))
   assert.equal(manifest.downloads.length, 12)
   assert.equal(manifest.cli.available, true)
-  assert.equal(manifest.version, "2.0.1")
-  assert.equal(manifest.cli.command, "npm install -g @subicodeagent/subi-cli@2.0.1")
-  assert.ok(manifest.downloads.every(item => item.url.includes("/v2.0.1/")))
+  assert.equal(manifest.version, "2.0.2")
+  assert.equal(manifest.cli.command, "npm install -g @subicodeagent/subi-cli@2.0.2")
+  assert.ok(manifest.downloads.every(item => item.url.includes("/v2.0.2/")))
   assert.ok(manifest.downloads.every(item => item.signed === false))
 })
 

@@ -13,6 +13,7 @@ export function createHomeScrollController(groups: Accessor<HomeSessionGroup[]>)
   const [hoverTarget, setHoverTarget] = createSignal<HTMLElement>()
 
   const [state, setState] = createStore({
+    // SAFETY: the empty map starts without session groups; updates write only HomeSessionGroup IDs and numeric opacity.
     titleOpacity: {} as Partial<Record<HomeSessionGroup["id"], number>>,
   })
 
@@ -68,6 +69,8 @@ export function createHomeScrollController(groups: Accessor<HomeSessionGroup[]>)
       .map((group) => headerRefs.get(group.id))
       .find((element) => element !== undefined)
 
+    // SAFETY: getComputedStyle is an optional browser host capability in headless fixtures.
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- see SAFETY above
     if (header && typeof getComputedStyle === "function") {
       const top = Number.parseFloat(getComputedStyle(header).top)
 
@@ -143,12 +146,6 @@ export function createHomeScrollController(groups: Accessor<HomeSessionGroup[]>)
       },
       update,
       containWheel,
-      containOuterWheel: (event: WheelEvent) => {
-        if (!viewport) return
-
-        if (event.target instanceof Node && viewport.contains(event.target)) return
-        containWheel(event)
-      },
     },
     header: {
       setContent: (element: HTMLDivElement) => {

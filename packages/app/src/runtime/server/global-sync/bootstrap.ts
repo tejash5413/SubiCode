@@ -5,7 +5,7 @@ import { getFilename } from "@opencode/util/path"
 import { retry } from "@opencode/util/retry"
 import { reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import type { State } from "./types"
-import { cmp, normalizeProjectInfo } from "./utils"
+import { normalizeProjectInfo } from "./utils"
 import { formatServerError } from "@/runtime/server/errors"
 import { QueryClient, queryOptions } from "@tanstack/solid-query"
 import type { ServerScope } from "@/runtime/server/scope"
@@ -31,6 +31,8 @@ function waitForPaint() {
 
     const timer = setTimeout(finish, 50)
 
+    // SAFETY: this scheduler also runs in non-browser hosts, where requestAnimationFrame is optional.
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- see SAFETY above
     if (typeof requestAnimationFrame !== "function") return
     requestAnimationFrame(() => {
       setTimeout(() => {
@@ -42,10 +44,10 @@ function waitForPaint() {
 }
 
 function errors(list: PromiseSettledResult<unknown>[]) {
-  return list.filter((item): item is PromiseRejectedResult => item.status === "rejected").map((item) => item.reason)
+  return list.flatMap((item) => item.status === "rejected" ? [item.reason] : [])
 }
 
-function runAll(list: Array<() => Promise<unknown>>) {
+function runAll<Value>(list: Array<() => Promise<Value>>) {
   return Promise.allSettled(list.map((item) => item()))
 }
 
@@ -62,21 +64,34 @@ type ProjectApi = {
 
 type LocationApi = { readonly get: (input?: LocationGetInput) => Promise<LocationGetOutput> }
 
-// Metadata only. Worktree inventories load per project when a view shows it (see workspaces/inventory).
+// Metadata only, in the server's order (most recently active first). Worktree inventories load per project when a
+// view shows it (see workspaces/inventory).
 export const loadProjectsQuery = (scope: ServerScope, projects: ProjectApi) =>
   queryOptions({
     queryKey: [scope, "project"],
     queryFn: () =>
       retry(() =>
-        projects.list().then((items) =>
-          items
-            .filter((project) => !!project?.id)
-            .map(normalizeProjectInfo)
-            .filter((p) => !!p.worktree && !p.worktree.includes("opencode-test"))
-            .sort((a, b) => cmp(a.id, b.id)),
-        ),
+        projects
+          .list()
+          .then((items) => items.flatMap((project) => (project?.id ? [normalizeProjectInfo(project)] : []))),
       ),
   })
+
+export function loadProjects(input: {
+  scope: ServerScope
+  project: ProjectApi
+  setGlobalStore: SetStoreFunction<GlobalStore>
+  queryClient: QueryClient
+}) {
+  return input.queryClient.fetchQuery(loadProjectsQuery(input.scope, input.project)).then((data) =>
+    input.setGlobalStore(
+      "project",
+      data.map((project) =>
+        withWorktreeInventory(project, input.queryClient.getQueryData(worktreeInventoryKey(input.scope, project.id))),
+      ),
+    ),
+  )
+}
 
 export async function bootstrapGlobal(input: {
   serverAPI: {
@@ -89,26 +104,33 @@ export async function bootstrapGlobal(input: {
 }) {
   const slow = [
     () => input.queryClient.fetchQuery(loadGlobalConfigQuery(input.scope)),
-    () => input.queryClient.fetchQuery(loadPathQuery(input.scope, null, input.serverAPI.location)),
     () =>
-      input.queryClient.fetchQuery(loadProjectsQuery(input.scope, input.serverAPI.project)).then((data) =>
-        input.setGlobalStore(
-          "project",
-          data.map((project) =>
-            withWorktreeInventory(
-              project,
-              input.queryClient.getQueryData(worktreeInventoryKey(input.scope, project.id)),
-            ),
-          ),
-        ),
-      ),
+      input.queryClient
+        .fetchQuery(loadPathQuery(input.scope, null, input.serverAPI.location))
+        .then((data) => input.setGlobalStore("path", data)),
+    () =>
+      loadProjects({
+        scope: input.scope,
+        project: input.serverAPI.project,
+        setGlobalStore: input.setGlobalStore,
+        queryClient: input.queryClient,
+      }),
   ]
 
-  await runAll(slow)
+  await runAll<Config | void>(slow)
 }
 
 function projectID(directory: string, projects: Project[]) {
   return projects.find((project) => project.worktree === directory || project.sandboxes?.includes(directory))?.id
+}
+
+export function inferHomeDirectory(path: string) {
+  const normalized = path.replaceAll("\\", "/")
+  const match = /^(\/Users\/[^/]+|\/home\/[^/]+|\/root|[A-Za-z]:\/Users\/[^/]+)(?=\/|$)/.exec(normalized)
+
+  if (!match) return ""
+
+  return path.includes("\\") ? match[1]!.replaceAll("/", "\\") : match[1]!
 }
 
 export const loadPathQuery = (scope: ServerScope, directory: string | null, api: LocationApi) =>
@@ -120,7 +142,7 @@ export const loadPathQuery = (scope: ServerScope, directory: string | null, api:
         config: "",
         worktree: location.project.directory,
         directory: location.directory,
-        home: "",
+        home: inferHomeDirectory(location.directory) || inferHomeDirectory(location.project.directory),
       })),
   })
 

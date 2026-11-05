@@ -1,13 +1,16 @@
 const website = "https://stlearnsmart.in/subi-code"
 const documentation = `${website}/docs`
+const repository = { owner: "tejash5413", repo: "SubiCode" }
+declare const OPENCODE_VERSION: string
 
 /** Distribution identity. Internal OpenCode protocol and package IDs remain compatible. */
 export const Product = {
   name: "SubiCode",
   // Public product version; runtime build IDs stay separate for compatibility and diagnostics.
-  version: "2.0.1",
+  version: typeof OPENCODE_VERSION === "string" ? OPENCODE_VERSION : "2.0.2",
   website,
   documentation,
+  repository: `https://github.com/${repository.owner}/${repository.repo}`,
   guides: {
     models: `${documentation}#models`,
     settings: `${documentation}#settings`,
@@ -18,7 +21,21 @@ export const Product = {
   support: "https://stlearnsmart.in/contact",
   command: "subi",
   directory: "subi-code",
-  // A SUBI update feed is not deployed. Never install an upstream OpenCode release over SUBI.
+  updates: {
+    cli: {
+      enabled: true,
+      package: "@subicodeagent/subi-cli",
+      registry: "https://registry.npmjs.org",
+    },
+    desktop: {
+      enabled: true,
+      // Notify and open GitHub; users download and run installers themselves.
+      installInApp: false,
+      feed: { provider: "github", ...repository, releaseType: "release" },
+      releaseNotes: `https://api.github.com/repos/${repository.owner}/${repository.repo}/releases?per_page=100`,
+    },
+  },
+  // Separate from our own feeds: never install upstream OpenCode builds over SubiCode.
   upstreamUpdates: false,
 } as const
 

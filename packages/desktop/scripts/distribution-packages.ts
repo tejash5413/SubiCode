@@ -1,6 +1,7 @@
 import { chmod, copyFile, cp, mkdir } from "node:fs/promises"
 import path from "node:path"
 import { NativeArch } from "../../../script/native-arch"
+import { Product } from "@opencode/util/product"
 import { CLI_BINARIES } from "./utils"
 
 export function distributionTarget(platform: string, arch: string) {
@@ -68,7 +69,7 @@ export async function stageDistribution(root: string, cliDist: string, output: s
         description: "SubiCode terminal client",
         license: "MIT",
         homepage: "https://stlearnsmart.in/subi-code",
-        repository: { type: "git", url: "git+https://github.com/tejash5413/Subi-Code.git" },
+        repository: { type: "git", url: "git+https://github.com/tejash5413/SubiCode.git" },
         bin: { subi: "bin/subi.cjs" },
         engines: { node: ">=22.0.0" },
         os: [platform],
@@ -103,6 +104,7 @@ export async function stageDistribution(root: string, cliDist: string, output: s
         nativeExecution: "pending",
         desktopExecution: "pending",
         extensionExecution: "pending",
+        desktopUpdateDelivery: Product.updates.desktop.installInApp ? "in-app" : "manual-github",
       },
       null,
       2,
@@ -122,15 +124,19 @@ export async function stageNpmWrapper(root: string, output: string, version: str
   )
   await mkdir(output)
   await mkdir(path.join(output, "bin"))
+
   for (const [input, file] of [
     [path.join(source, "bin/subi.cjs"), "bin/subi.cjs"],
     [path.join(source, "README.md"), "README.md"],
     [path.join(root, "LICENSE"), "LICENSE"],
   ]) {
     const text = await Bun.file(input).text()
+
     await Bun.write(path.join(output, file), text.replace(/\r\n/g, "\n"))
   }
+
   await chmod(path.join(output, "bin/subi.cjs"), 0o755)
   await Bun.write(path.join(output, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
+
   return output
 }

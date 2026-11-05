@@ -3,6 +3,7 @@ import type { SessionInfo } from "@opencode/client/promise"
 import type { LocalProject } from "@/shell/state/layout"
 import { buildHomeSessionRecords, homeSessionLocation } from "./records"
 
+// SAFETY: home record projection only reads the identity, location and timestamp fields provided by this fixture.
 const session = (id: string, directory: string, projectID: string) =>
   ({
     id,
@@ -13,7 +14,8 @@ const session = (id: string, directory: string, projectID: string) =>
   }) as SessionInfo
 
 describe("buildHomeSessionRecords", () => {
-  const opened = { id: "project-a", worktree: "/repo/a", expanded: true } as LocalProject
+  // SAFETY: these home project fixtures only supply identity and worktree, which are the fields read by the projection.
+  const opened = { id: "project-a", worktree: "/repo/a" } as LocalProject
   const sessions = [session("a", "/repo/a", "project-a"), session("b", "/repo/b", "project-b")]
 
   test("includes sessions outside added projects when unfiltered", () => {
@@ -24,7 +26,7 @@ describe("buildHomeSessionRecords", () => {
     })
 
     expect(records.map((record) => record.session.id)).toEqual(["a", "b"])
-    expect(records[1]?.project).toMatchObject({ id: "project-b", worktree: "/repo/b", expanded: false })
+    expect(records[1]?.project).toMatchObject({ id: "project-b", worktree: "/repo/b" })
   })
 
   test("filters sessions when a project is selected", () => {
@@ -49,7 +51,8 @@ describe("buildHomeSessionRecords", () => {
   })
 
   test("prefers the added project whose directory matches over a sibling entry with the same ID", () => {
-    const nested = { id: "project-a", worktree: "/repo/a/packages/app", expanded: true } as LocalProject
+    // SAFETY: the project matcher only reads this fixture's ID and worktree.
+    const nested = { id: "project-a", worktree: "/repo/a/packages/app" } as LocalProject
 
     const records = buildHomeSessionRecords({
       sessions: () => [session("n", "/repo/a/packages/app", "project-a")],

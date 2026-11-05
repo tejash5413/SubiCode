@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { stageDesktopUpdates } from "./desktop-updates.mjs"
 
 const output = path.resolve(process.argv[2])
 const destination = path.resolve(process.argv[3])
@@ -29,11 +30,21 @@ const downloads = await Promise.all(assets.map(async item => {
     product: item.product, platform, arch, version, filename: item.name,
     format: path.extname(item.name).slice(1), size: bytes.length,
     sha256: createHash("sha256").update(bytes).digest("hex"),
-    url: `https://github.com/tejash5413/Subi-Code/releases/download/v${version}/${item.name}`,
+    url: `https://github.com/tejash5413/SubiCode/releases/download/v${version}/${item.name}`,
     signed: false,
   }
 }))
+const updateDelivery = qualification.desktopUpdateDelivery ?? "in-app"
+assert.ok(["manual-github", "in-app"].includes(updateDelivery), "Unknown desktop update delivery")
+if (updateDelivery === "manual-github")
+  assert.match(qualification.manualUpdatePolicy ?? "", /^passed:/, "Manual download UI must pass native qualification")
+const updateFiles = updateDelivery === "manual-github" ? [] :
+  await stageDesktopUpdates(path.join(output, "desktop"), destination, qualification, downloads)
 await writeFile(path.join(destination, `downloads-${qualification.platform}.json`), JSON.stringify({
+  updateDelivery,
+  manualUpdatePolicy: qualification.manualUpdatePolicy,
+  updateFiles,
+  updateSignatureVerification: qualification.updateSignatureVerification,
   sourceCommit: qualification.npm.sourceCommit,
   nativeExecution: qualification.nativeExecution,
   desktopExecution: qualification.desktopExecution,

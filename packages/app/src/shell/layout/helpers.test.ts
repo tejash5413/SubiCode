@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import type { SessionInfo } from "@opencode/client/promise"
-import { closeHomeProject, errorMessage, projectForSession, toggleHomeProjectSelection } from "./helpers"
+import { errorMessage, projectForSession, toggleHomeProjectSelection } from "./helpers"
 import { ServerConnection } from "@/runtime/server/registry"
 
 const serverKey = ServerConnection.Key.make
 
+// SAFETY: this fixture provides every SessionInfo field read by the layout helpers; optional model data is unused.
 const session = (input: Partial<SessionInfo> & Pick<SessionInfo, "id"> & { directory: string }) =>
   ({
     projectID: "project",
@@ -64,28 +65,6 @@ describe("layout workspace helpers", () => {
         { server: serverKey("https://debian.example"), directory: "/home/luke/repos/amazon" },
         serverKey("https://debian.example"),
         "/home/luke/repos/amazon",
-      ),
-    ).toEqual({ server: serverKey("https://debian.example") })
-  })
-
-  test("closes a home project through its server context", () => {
-    const closed: string[] = []
-
-    expect(
-      closeHomeProject(
-        { server: serverKey("https://windows.example"), directory: "/shared" },
-        serverKey("https://debian.example"),
-        { close: (directory) => closed.push(directory) },
-        "/shared",
-      ),
-    ).toEqual({ server: serverKey("https://windows.example"), directory: "/shared" })
-    expect(closed).toEqual(["/shared"])
-    expect(
-      closeHomeProject(
-        { server: serverKey("https://debian.example"), directory: "/shared" },
-        serverKey("https://debian.example"),
-        { close: (directory) => closed.push(directory) },
-        "/shared",
       ),
     ).toEqual({ server: serverKey("https://debian.example") })
   })

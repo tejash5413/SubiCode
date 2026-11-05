@@ -6,6 +6,7 @@ import type { UpdateState } from "../context/update-notification"
 import { DialogHeader, DialogLayout, useDialog } from "../ui/dialog"
 import { errorMessage } from "../util/error"
 import { Spinner } from "./spinner"
+import { Product } from "@opencode/util/product"
 
 export function DialogUpdate(props: {
   check?: (signal: AbortSignal) => Promise<string | undefined>
@@ -137,21 +138,21 @@ export function DialogUpdate(props: {
             </Match>
             <Match when={current.type === "available"}>
               <text fg={theme.text.muted}>
-                An update is available. After installing, you'll be prompted to restart Subi Code.
+                {`An update is available. After installing, you'll be prompted to restart ${Product.name}.`}
               </text>
             </Match>
             <Match when={current.type === "installing"}>
               <Spinner shimmer={theme.text.base}>
-                {current.type === "installing" ? `Installing Subi Code ${current.version}…` : ""}
+                {current.type === "installing" ? `Installing ${Product.name} ${current.version}…` : ""}
               </Spinner>
             </Match>
             <Match when={current.type === "installed"}>
               <text fg={theme.text.muted} wrapMode="word">
-                Update successful! A restart is required. Any active sessions will be resumed automatically.
+                {`Update successful! Restart closes ${Product.name}, then run ${Product.command} to use the new version.`}
               </text>
             </Match>
             <Match when={current.type === "current"}>
-              <text fg={theme.text.muted}>Subi Code is already up to date.</text>
+              <text fg={theme.text.muted}>{`${Product.name} is already up to date.`}</text>
             </Match>
             <Match when={current.type === "unavailable"}>
               <text fg={theme.text.muted} wrapMode="word">

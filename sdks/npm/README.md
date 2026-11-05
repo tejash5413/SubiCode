@@ -15,6 +15,13 @@ The package selects a matching native optional dependency. Keep npm optional dep
 
 To update: `npm install -g @subicodeagent/subi-cli@latest`.
 
+Version 2.0.2 also supports `subi upgrade` for global npm
+installations. It uses only this package on the public npm registry and verifies
+the installed version afterward. Restart SubiCode to use the new binary; existing
+sessions can still be running the older executable. Global npm installations check and install newer stable SubiCode releases at startup by default. In the CLI config,
+`"update": "notify"` keeps notifications only, and `"disable"` skips automatic
+checks. Published 2.0.1 binaries do not contain the new updater configuration.
+
 [Documentation](https://stlearnsmart.in/subi-code/docs) · [Website](https://stlearnsmart.in/subi-code) · [Support](https://stlearnsmart.in/contact)
 
 Connect your own supported provider or your LearnSmart account after installation. Model access depends on your provider/account permissions and limits.

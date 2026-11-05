@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.sessionReview.title": "Munkamenet változások",
   "ui.sessionReview.title.git": "Git változások",
   "ui.sessionReview.title.branch": "Ágak változásai",
@@ -195,7 +195,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(nincs válasz)",
   "ui.question.review.notAnswered": "(nem válaszolt)",
   "ui.question.multiHint": "Válassza ki az összes megfelelő választ",
-  "ui.question.singleHint": "Válasszon ki egy választ",
   "ui.question.custom.placeholder": "Írja be a választ…",
   "ui.tool.loadedFile": "{{path}} betöltve",
   "ui.tool.loadedSkill": "A(z) {{name}} készség betöltve",

@@ -28,7 +28,7 @@ export default defineConfig({
     icons(channel),
     serviceWorker(fileURLToPath(new URL("./dist", import.meta.url))),
     sentry,
-  ] as any,
+  ],
   server: {
     host: "0.0.0.0",
     allowedHosts: true,
@@ -40,13 +40,14 @@ export default defineConfig({
           rolldownOptions: {
             input: [
               "index.html",
+              "dictation.html",
               "e2e/utils/settings-wsl.html",
               "e2e/utils/app-direction.html",
               "e2e/utils/windows-menu.html",
             ],
           },
         }
-      : {}),
+      : { rolldownOptions: { input: ["index.html", "dictation.html"] } }),
     assetsDir: "_assets",
     target: "esnext",
     sourcemap: true,

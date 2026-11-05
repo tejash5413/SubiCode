@@ -19,7 +19,7 @@ let current: FindHost | undefined
 
 let installed = false
 
-function isEditable(node: unknown): boolean {
+function isEditable(node: EventTarget | null): boolean {
   if (!(node instanceof HTMLElement)) return false
 
   if (node.closest("[data-prevent-autofocus]")) return true
@@ -29,7 +29,7 @@ function isEditable(node: unknown): boolean {
   return /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(node.tagName)
 }
 
-function hostForNode(node: unknown) {
+function hostForNode(node: EventTarget | null) {
   if (!(node instanceof Node)) return
 
   for (const host of hosts) {
@@ -94,7 +94,7 @@ function installShortcuts() {
 }
 
 function clearHighlightFind() {
-  const api = (globalThis as { CSS?: { highlights?: { delete: (name: string) => void } } }).CSS?.highlights
+  const api = globalThis.CSS?.highlights
 
   if (!api) return
   api.delete("opencode-find")
@@ -102,8 +102,10 @@ function clearHighlightFind() {
 }
 
 function supportsHighlights() {
-  const g = globalThis as unknown as { CSS?: { highlights?: unknown }; Highlight?: unknown }
+  const g = globalThis
 
+  // SAFETY: browser support for the optional Highlight constructor is checked before use.
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- see SAFETY above
   return typeof g.Highlight === "function" && g.CSS?.highlights != null
 }
 
@@ -199,7 +201,7 @@ export function createFileFind(opts: CreateFileFindOptions) {
         mark.style.backgroundColor = active ? "var(--surface-warning-strong)" : "var(--surface-warning-base)"
         mark.style.opacity = active ? "0.55" : "0.35"
 
-        if (active) mark.style.boxShadow = "inset 0 0 0 1px var(--border-warning-base)"
+        if (active) mark.style.boxShadow = "inset 0 0 0 1px var(--v2-state-border-warning)"
         frag.appendChild(mark)
       }
     }
@@ -337,14 +339,13 @@ export function createFileFind(opts: CreateFileFindOptions) {
   }
 
   const setHighlights = (ranges: Range[], currentIndex: number) => {
-    const root = globalThis as unknown as {
-      CSS?: { highlights?: { delete: (name: string) => void; set: (name: string, value: unknown) => void } }
-      Highlight?: new (...ranges: Range[]) => unknown
-    }
+    const root = globalThis
 
     const api = root.CSS?.highlights
     const Highlight = root.Highlight
 
+    // SAFETY: the CSS registry and Highlight constructor are optional browser capabilities.
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- see SAFETY above
     if (!api || typeof Highlight !== "function") return false
 
     api.delete("opencode-find")

@@ -15,7 +15,7 @@ export type NamespaceStorage = AsyncStorage & {
   accept(insert: Record<string, string>, remove: string[], revision: number): void
 }
 
-export const namespaceFlushDelay = 100
+const namespaceFlushDelay = 100
 
 // In-memory truth for a namespace. Reads load the namespace once and are Map lookups from then
 // on; writes update the cache immediately and are batched into one driver call per flush window,
@@ -94,13 +94,15 @@ export function createNamespaceStorage(
     if (dirty.size > 0) {
       const batch = [...dirty].map((key) => ({ key, ...local.get(key)! }))
       dirty.clear()
-      const insert = Object.fromEntries(batch.filter((entry) => entry.value !== null).map((e) => [e.key, e.value!]))
-      const remove = batch.filter((entry) => entry.value === null).map((entry) => entry.key)
+      const insert = Object.fromEntries(batch.flatMap((entry) => entry.value !== null ? [[entry.key, entry.value]] : []))
+      const remove = batch.flatMap((entry) => entry.value === null ? [entry.key] : [])
       const current = (entry: { key: string; seq: number }) => local.get(entry.key)?.seq === entry.seq
 
       const request = driver
         .update(name, insert, remove)
         .then((revision) => batch.filter(current).forEach((entry) => acknowledge(entry.key, revision)))
+        // SAFETY: storage implementations can reject with arbitrary causes; this handler only reports and retries current entries.
+        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- see SAFETY above
         .catch((error: unknown) => {
           // Only a value nothing newer has replaced is worth retrying.
           batch.filter(current).forEach((entry) => dirty.add(entry.key))

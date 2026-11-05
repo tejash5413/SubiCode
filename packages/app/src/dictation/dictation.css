@@ -1,0 +1,45 @@
+.subi-dictation {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  color: var(--text-strong);
+  font-family: var(--font-family-sans);
+  font-size: 14px;
+  line-height: var(--line-height-base);
+  max-height: min(720px, 90dvh);
+  overflow-y: auto;
+}
+.subi-dictation h2 { font-size: 22px; line-height: 28px; font-weight: var(--font-weight-medium); }
+.subi-dictation-note { color: var(--text-weak); font-size: 13px; line-height: var(--line-height-compact); }
+.subi-dictation-status { display: flex; align-items: center; gap: 10px; min-height: 28px; }
+.subi-dictation-recording { width: 9px; height: 9px; border-radius: 50%; background: var(--text-diff-delete-base); }
+.subi-dictation textarea {
+  width: 100%; resize: vertical; min-height: 120px; border: 1px solid var(--border-base);
+  border-radius: 12px; padding: 12px; background: var(--surface-base); color: inherit; font: inherit;
+}
+.subi-dictation textarea:focus-visible, .subi-dictation button:focus-visible, .subi-dictation-trigger:focus-visible {
+  outline: 2px solid var(--text-interactive-base); outline-offset: 3px;
+}
+.subi-dictation-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.subi-dictation button {
+  min-height: 40px; padding: 8px 16px; border: 1px solid var(--border-base); border-radius: 10px;
+  background: var(--surface-base); color: inherit; font: inherit; cursor: pointer;
+}
+.subi-dictation button.subi-dictation-primary { background: #394ebe; border-color: #394ebe; color: #fff; }
+.subi-dictation button:disabled { opacity: .55; cursor: default; }
+.subi-dictation-trigger {
+  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+  border-radius: 8px; color: var(--text-base); cursor: pointer; margin-inline-end: 6px;
+}
+.subi-dictation-trigger:hover { background: var(--surface-base-hover); }
+.subi-dictation-window {
+  min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+  background: var(--background-base); color: var(--text-strong); font-family: var(--font-family-sans);
+}
+.subi-dictation-card {
+  width: min(100%, 580px); background: var(--surface-raised); border: 1px solid var(--border-base);
+  border-radius: 20px; overflow: hidden; box-shadow: 0 24px 80px #0002;
+}
+.subi-dictation-brand { padding: 22px 28px 0; font-size: 18px; font-weight: var(--font-weight-medium); }
+.subi-dictation-notice { padding: 24px 28px; font-size: 15px; line-height: var(--line-height-base); }

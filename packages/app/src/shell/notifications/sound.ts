@@ -4,10 +4,7 @@ let loads: Record<SoundID, () => Promise<string>> | undefined
 
 function getFiles() {
   if (files) return files
-  files = import.meta.glob("../../../../ui/src/assets/audio/*.aac", { import: "default" }) as Record<
-    string,
-    () => Promise<string>
-  >
+  files = import.meta.glob<string>("../../../../ui/src/assets/audio/*.aac", { import: "default" })
 
   return files
 }
@@ -60,12 +57,13 @@ export const SOUND_OPTIONS = [
   { id: "yup-06", label: "sound.option.yup06" },
 ] as const
 
-export type SoundOption = (typeof SOUND_OPTIONS)[number]
+type SoundOption = (typeof SOUND_OPTIONS)[number]
 
-export type SoundID = SoundOption["id"]
+type SoundID = SoundOption["id"]
 
 function getLoads() {
   if (loads) return loads
+  // SAFETY: the bundled audio asset basenames match SOUND_OPTIONS; the catalog tests check the installed choices.
   loads = Object.fromEntries(
     Object.entries(getFiles()).flatMap(([path, load]) => {
       const file = path.split("/").at(-1)
@@ -81,10 +79,11 @@ function getLoads() {
 
 const cache = new Map<SoundID, Promise<string | undefined>>()
 
-export function soundSrc(id: string | undefined) {
+function soundSrc(id: string | undefined) {
   const loads = getLoads()
 
   if (!id || !(id in loads)) return Promise.resolve(undefined)
+  // SAFETY: the preceding membership check confirms that id is one of the bundled sound keys.
   const key = id as SoundID
   const hit = cache.get(key)
 

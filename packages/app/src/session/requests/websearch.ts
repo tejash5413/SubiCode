@@ -1,9 +1,10 @@
 import type { FormInfo, FormOption, SessionFormReplyInput, FormStringField } from "@opencode/client/promise"
 import { createEffect, createMemo, createResource, on, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
+import { abort } from "@opencode/util/abort"
 import type { OpenCodeEventStream } from "@/runtime/server/client"
 
-export function webSearchProviderField(form: FormInfo) {
+function webSearchProviderField(form: FormInfo) {
   return form.fields.find(
     (field): field is FormStringField => field.type === "string" && field.key === "provider" && !!field.options,
   )
@@ -14,11 +15,12 @@ export function createWebSearchRequest(input: {
   connected: () => boolean
   request: () => FormInfo | undefined
   providers: (sessionID: string) => Promise<FormOption[]>
-  reply: (input: SessionFormReplyInput) => Promise<unknown>
+  reply: (input: SessionFormReplyInput) => Promise<void>
   events: Pick<OpenCodeEventStream, "listen">
 }) {
   const [store, setStore] = createStore({
     selected: "random",
+    // SAFETY: sending starts absent; submission stores its FormInfo and AbortController until completion or cancellation.
     sending: undefined as { form: FormInfo; abort: AbortController } | undefined,
     error: false,
   })
@@ -49,7 +51,7 @@ export function createWebSearchRequest(input: {
 
   createEffect(
     on([input.owner, input.connected], () => {
-      store.sending?.abort.abort()
+      abort(store.sending?.abort)
       setStore({ sending: undefined, selected: "random", error: false })
     }),
   )
@@ -64,7 +66,7 @@ export function createWebSearchRequest(input: {
       },
     ),
   )
-  onCleanup(() => store.sending?.abort.abort())
+  onCleanup(() => abort(store.sending?.abort))
 
   const submit = async (selection: string | false) => {
     const form = input.request()
@@ -105,7 +107,7 @@ export async function replyWebSearch(input: {
   form: FormInfo
   selection: string | false
   signal: AbortSignal
-  reply: (input: SessionFormReplyInput) => Promise<unknown>
+  reply: (input: SessionFormReplyInput) => Promise<void>
   events: Pick<OpenCodeEventStream, "listen">
 }) {
   if (input.signal.aborted) return

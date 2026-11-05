@@ -1,0 +1,27 @@
+export const dictationMessages = {
+  "dictation.title": "Voice typing",
+  "dictation.description": "Speak your request, then review and edit the text before using it.",
+  "dictation.local": "Speech is processed on this device. First use downloads the speech model.",
+  "dictation.start": "Start recording",
+  "dictation.preparing": "Preparing voice typing…",
+  "dictation.listening": "Listening…",
+  "dictation.stop": "Stop recording",
+  "dictation.transcribing": "Transcribing on this device…",
+  "dictation.transcript": "Your message",
+  "dictation.use": "Use text",
+  "dictation.cancel": "Cancel",
+  "dictation.retry": "Try again",
+  "dictation.limit": "Record up to 90 seconds at a time. Nothing is sent to the AI until you send the message.",
+  "dictation.error.permission": "Microphone access was denied. Allow microphone access and try again.",
+  "dictation.error.unavailable": "Microphone recording is unavailable. Use an up-to-date browser or desktop app.",
+  "dictation.error.download": "The speech model could not be prepared. Check your connection and try again.",
+  "dictation.error.transcription": "This recording could not be transcribed. Please try again.",
+  "dictation.error.empty": "No speech was detected. Please try again.",
+  "dictation.error.delivery": "The text could not be inserted. Keep a copy and try again.",
+  "dictation.cli.description": "Use voice typing here, then return to your terminal to review and send the message.",
+  "dictation.cli.sent": "Text added to your terminal draft. Return to SubiCode to review and send it.",
+  "dictation.cli.closed": "This voice typing session has ended. Start voice typing again from your terminal.",
+  "dictation.cli.failed": "The terminal could not receive the text. Keep a copy and try again.",
+}
+
+export type DictationKey = keyof typeof dictationMessages

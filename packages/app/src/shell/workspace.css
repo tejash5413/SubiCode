@@ -327,3 +327,29 @@
     margin: 20px 0;
   }
 }
+
+/* Keep the 2.0.1 project control while the location dialog uses the upgraded API. */
+.subi-project-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--v2-text-text-base);
+  font-size: 13px;
+  line-height: var(--line-height-base);
+}
+
+.subi-project-trigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subi-project-trigger:hover,
+.subi-project-trigger:focus-visible {
+  background: var(--v2-overlay-simple-overlay-hover);
+}

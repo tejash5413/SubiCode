@@ -1,6 +1,6 @@
 {
   "name": "@subi/managed",
-  "version": "2.0.0-dev.0",
+  "version": "2.0.2",
   "private": true,
   "type": "module",
   "description": "LearnSmart identity, assigned models and account entitlements for SUBI",
@@ -8,7 +8,7 @@
     "./*": "./src/*.ts"
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "bun check --no-script",
     "test": "bun test --only-failures"
   },
   "dependencies": {
@@ -17,6 +17,7 @@
   "devDependencies": {
     "@tsconfig/bun": "catalog:",
     "@types/bun": "catalog:",
-    "@typescript/native-preview": "catalog:"
+    "@typescript/native": "catalog:",
+    "@types/node": "catalog:"
   }
 }

@@ -62,6 +62,7 @@ export function List<T>(props: ListProps<T> & { ref?: (ref: ListRef) => void }) 
 
   const [store, setStore] = createStore({
     mouseActive: false,
+    // SAFETY: the scroll container ref supplies an HTMLDivElement after mount.
     scrollRef: undefined as HTMLDivElement | undefined,
     internalFilter: "",
   })
@@ -94,6 +95,8 @@ export function List<T>(props: ListProps<T> & { ref?: (ref: ListRef) => void }) 
 
   const { filter, grouped, flat, active, setActive, onKeyDown, onInput, refetch } = useFilteredList<T>(props)
 
+  // SAFETY: the public search prop is a boolean or a typed search-options object; this selects the object variant.
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- see SAFETY above
   const searchProps = () => (typeof props.search === "object" ? props.search : {})
   const searchAction = () => searchProps().action
   const addProps = () => props.add
@@ -137,21 +140,6 @@ export function List<T>(props: ListProps<T> & { ref?: (ref: ListRef) => void }) 
       { defer: true },
     ),
   )
-
-  createEffect(() => {
-    const scroll = scrollRef()
-
-    if (!scroll) return
-
-    if (!props.current) return
-    const key = props.key(props.current)
-    requestAnimationFrame(() => {
-      const element = findByKey(scroll, key)
-
-      if (!element) return
-      scrollIntoView(scroll, element, "center")
-    })
-  })
 
   createEffect(() => {
     const all = flat()
@@ -239,6 +227,7 @@ export function List<T>(props: ListProps<T> & { ref?: (ref: ListRef) => void }) 
   function GroupHeader(groupProps: { group: { category: string; items: T[] } }): JSX.Element {
     const [state, setState] = createStore({
       stuck: false,
+      // SAFETY: the header ref supplies an HTMLDivElement after mount.
       header: undefined as HTMLDivElement | undefined,
     })
 

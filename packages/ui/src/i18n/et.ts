@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.sessionReview.title": "Seansi muudatused",
   "ui.sessionReview.title.git": "Giti muudatused",
   "ui.sessionReview.title.branch": "Haru muutused",
@@ -193,7 +193,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(pole vastust)",
   "ui.question.review.notAnswered": "(ei vastanud)",
   "ui.question.multiHint": "Valige kõik sobivad vastused",
-  "ui.question.singleHint": "Valige üks vastus",
   "ui.question.custom.placeholder": "Sisesta oma vastus…",
   "ui.tool.loadedFile": "Laaditi {{path}}",
   "ui.tool.loadedSkill": "Laaditi oskus {{name}}",

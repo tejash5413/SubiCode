@@ -2,7 +2,7 @@
   "name": "subicode",
   "displayName": "SubiCode",
   "description": "SubiCode coding agent for VS Code",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "publisher": "learnsmart",
   "homepage": "https://stlearnsmart.in/subi-code",
   "bugs": {
@@ -123,6 +123,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tejash5413/Subi-Code.git"
+    "url": "https://github.com/tejash5413/SubiCode.git"
   }
 }

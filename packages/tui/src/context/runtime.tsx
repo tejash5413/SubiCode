@@ -11,6 +11,8 @@ export type TuiApp = Readonly<{
   channel: string
   /** The current release's highlights, embedded only in stable release builds. */
   highlights?: ReadonlyArray<TuiHighlight>
+  /** Open local voice typing and return reviewed text without sending a message. */
+  dictate?: (input: { signal: AbortSignal; onReady: (url: string) => void }) => Promise<string | undefined>
 }>
 
 export type TuiPaths = Readonly<{
@@ -23,6 +25,8 @@ export type TuiPaths = Readonly<{
 export type TuiTerminalEnvironment = Readonly<{
   platform: string
   variables?: Readonly<Record<string, string>>
+  // The server runs on this machine, so it can read file paths from this terminal.
+  localServer?: boolean
 }>
 
 export type TuiStartup = Readonly<{

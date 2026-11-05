@@ -1,18 +1,34 @@
-import { Component } from "solid-js"
+import { Component, createResource, type JSX } from "solid-js"
 import { Tabs } from "@opencode/ui/tabs"
 import { Product } from "@opencode/util/product"
 import { useLanguage } from "@/runtime/i18n/language"
 import { ExternalLink } from "@/runtime/platform/external-link"
 import type { SettingsView } from "@/settings/surface"
 import "@/settings/settings.css"
+import { usePlatform } from "@/runtime/platform/platform"
+import { useServerSDK } from "@/runtime/server/client"
+import { ServerConnection } from "@/runtime/server/registry"
+import { ExtensionPlugins } from "@/runtime/plugin/extension-plugins"
 import { ExtensionSources } from "./extension-sources"
 import { McpConnections } from "./mcp-connections"
 
 export const SettingsExtensions: Component<{
+  directory?: string
+  headerAction?: JSX.Element
   subtab?: SettingsView["subtab"]
   onSubtab: (value: SettingsView["subtab"]) => void
 }> = (props) => {
   const language = useLanguage()
+  const sdk = useServerSDK()
+  const platform = usePlatform()
+  const own = () => !!platform.plugins && ServerConnection.builtin(sdk.server)
+
+  const [plugins] = createResource(
+    () => sdk.connection.status() === "connected",
+    () => sdk.api.plugin.list().then((result) => result.data).catch(() => []),
+    { initialValue: [] },
+  )
+
   return (
     <>
       <div class="settings-tab-header">
@@ -24,15 +40,12 @@ export const SettingsExtensions: Component<{
           <ExternalLink
             class="settings-action-link"
             href={
-              props.subtab === "plugins"
-                ? Product.guides.plugins
-                : props.subtab === "skills"
-                  ? Product.guides.skills
-                  : Product.guides.mcp
+              { plugins: Product.guides.plugins, skills: Product.guides.skills, mcps: Product.guides.mcp, lsps: Product.guides.mcp }[props.subtab ?? "mcps"]
             }
           >
             {language.t("common.learnMore")}
           </ExternalLink>
+          {props.headerAction}
         </div>
       </div>
 
@@ -57,6 +70,7 @@ export const SettingsExtensions: Component<{
 
           <Tabs.Content value="plugins">
             <ExtensionSources kind="plugin" />
+            <ExtensionPlugins plugins={plugins.latest ?? []} own={own()} />
           </Tabs.Content>
           <Tabs.Content value="skills">
             <ExtensionSources kind="skill" />

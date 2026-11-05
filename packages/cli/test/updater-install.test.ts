@@ -16,9 +16,9 @@ function fixture(
   respond: (command: ChildProcess.StandardCommand) => Partial<AppProcess.RunResult> & {
     error?: AppProcess.AppProcessError
   } = () => ({}),
-  name = "@opencode/cli",
+  name = `@subicodeagent/subi-cli-${process.platform}-${process.arch}`,
   failCleanup = false,
-  releasePackage = name,
+  releasePackage = "@subicodeagent/subi-cli",
   formula?: string,
   executableOverride?: (root: string, home: string) => Effect.Effect<string, PlatformError.PlatformError, FileSystem.FileSystem>,
 ) {
@@ -32,12 +32,12 @@ function fixture(
       ? yield* executableOverride(root, path.join(root, "home"))
       : formula
         ? path.join(root, "Cellar", formula, "2.0.20", "bin", "opencode")
-        : path.join(modules, "@opencode", "cli", "bin", "opencode")
+        : path.join(modules, "@subicodeagent", name.split("/")[1], "bin", process.platform === "win32" ? "subi.exe" : "subi")
     yield* fs.makeDirectory(path.dirname(executable), { recursive: true })
     yield* fs.writeFileString(executable, "binary")
     if (!formula && !executableOverride)
       yield* fs.writeFileString(
-        path.join(modules, "@opencode", "cli", "package.json"),
+        path.join(path.dirname(path.dirname(executable)), "package.json"),
         JSON.stringify({ name, bin: { opencode: "bin/opencode" } }),
       )
     const requests: string[] = []
@@ -50,7 +50,7 @@ function fixture(
               const url = input instanceof Request ? input.url : input.toString()
               requests.push(url)
               if (new URL(url).hostname === "formulae.brew.sh") return Response.json({ versions: { stable: "2.0.21" } })
-              return Response.json({ version: "2.3.4", metadata: { package: releasePackage } })
+              return Response.json({ name: releasePackage, version: "2.3.4", optionalDependencies: Object.fromEntries(["win32-x64", "win32-arm64", "darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"].map(target => [`${releasePackage}-${target}`, "2.3.4"])) })
             },
             { preconnect: fetch.preconnect },
           ),
@@ -111,7 +111,12 @@ function fixture(
               if (!lookup) commands.push([command.command, ...command.args])
               const result = lookup
                 ? { stdout: Buffer.from(`${path.join(git, "mingw64", "libexec", "git-core")}\n`) }
-                : respond(command)
+                : {
+                    ...(command.command === "npm" && command.args[0] === "list"
+                      ? { stdout: Buffer.from(JSON.stringify({ dependencies: { "@subicodeagent/subi-cli": { version: "2.0.2" } } })) }
+                      : command.command === "subi" ? { stdout: Buffer.from("subi v2.3.4\n") } : {}),
+                    ...respond(command),
+                  }
               if (result.error) return Effect.fail(result.error)
               return Effect.succeed({
                 command: command.command,
@@ -131,37 +136,57 @@ function fixture(
   })
 }
 
-// SUBI has no release feed yet. Upstream installer dispatch is intentionally unavailable.
-for (const method of Updater.methods) {
-  it.live(`${method} cannot check, install, or remove an upstream package`, () =>
+for (const method of Updater.methods.filter(method => method !== "npm")) {
+  it.live(`${method} cannot dispatch an upstream installer`, () =>
     Effect.gen(function* () {
       const current = yield* fixture()
       const latest = yield* current.updater.latest(method).pipe(Effect.flip)
-      expect(latest.message).toContain("SUBI updates are not configured")
-      const install = yield* current.updater.upgrade(method, "v2.3.4").pipe(Effect.flip)
-      expect(install.message).toContain("SUBI updates are not configured")
+      expect(latest.message).toContain("npm installations only")
+      const install = yield* current.updater.upgrade(method, "2.3.4").pipe(Effect.flip)
+      expect(install.message).toContain("npm installations only")
       expect(current.updater.removal(method)).toBeUndefined()
       expect(current.requests).toEqual([])
       expect(current.commands).toEqual([])
-      expect(yield* current.fs.readFileString(current.executable)).toBe("binary")
     }),
   )
 }
 
-it.live("automatic, manual, and direct apply paths cannot dispatch upstream work", () =>
+it.live("an npm upgrade selects only the SubiCode wrapper and confirms the installed binary", () =>
   Effect.gen(function* () {
     const current = yield* fixture()
-    const installed: string[] = []
-    expect(yield* current.updater.run((version) => installed.push(version))).toBeUndefined()
-    expect(yield* current.updater.check()).toEqual({
-      type: "unavailable",
-      message: "SUBI updates are not configured. Install a verified SUBI build.",
-    })
-    const apply = yield* current.updater.apply("2.3.4").pipe(Effect.flip)
-    expect(apply.message).toContain("SUBI updates are not configured")
-    expect(installed).toEqual([])
-    expect(current.requests).toEqual([])
+    expect(yield* current.updater.latest("npm")).toBe("2.3.4")
+    expect(current.requests).toEqual(["https://registry.npmjs.org/@subicodeagent%2fsubi-cli/latest"])
+    yield* current.updater.upgrade("npm", "2.3.4")
+    expect(current.commands.filter(command => command[1] === "install")).toEqual([[
+      "npm", "install", "--global", "--include=optional", "--registry=https://registry.npmjs.org",
+      "@subicodeagent/subi-cli@2.3.4",
+    ]])
+    expect(current.commands.at(-1)).toEqual(["subi", "--version"])
+  }),
+)
+
+it.live("an upstream installation cannot be replaced by the SubiCode updater", () =>
+  Effect.gen(function* () {
+    const current = yield* fixture(undefined, "@opencode/cli")
+    const result = yield* current.updater.upgrade("npm", "2.3.4").pipe(Effect.flip)
+    expect(result.message).toContain("standalone or bundled installation")
     expect(current.commands).toEqual([])
-    expect(yield* current.fs.readFileString(current.executable)).toBe("binary")
+    expect(current.requests).toEqual([])
+  }),
+)
+
+it.live("registry responses naming another product are rejected before installation", () =>
+  Effect.gen(function* () {
+    const current = yield* fixture(undefined, undefined, false, "@opencode/cli")
+    expect(yield* current.updater.latest("npm").pipe(Effect.flip)).toBeInstanceOf(Error)
+    expect(current.commands).toEqual([])
+  }),
+)
+
+it.live("a successful npm exit cannot hide a stale executable on PATH", () =>
+  Effect.gen(function* () {
+    const current = yield* fixture(command => command.command === "subi" ? { stdout: Buffer.from("subi v2.0.1") } : {})
+    const result = yield* current.updater.upgrade("npm", "2.3.4").pipe(Effect.flip)
+    expect(result.message).toContain("version could not be confirmed")
   }),
 )

@@ -8,7 +8,7 @@ function hue(v: number) {
   return ((v % 360) + 360) % 360
 }
 
-export function hexToRgb(hex: HexColor): { r: number; g: number; b: number } {
+export function hexToRgb(hex: HexColor) {
   const h = hex.replace("#", "")
 
   const full =
@@ -78,7 +78,7 @@ export function rgbToOklch(r: number, g: number, b: number): OklchColor {
   return { l: L, c: C, h: H }
 }
 
-export function oklchToRgb(oklch: OklchColor): { r: number; g: number; b: number } {
+export function oklchToRgb(oklch: OklchColor) {
   const { l: L, c: C, h: H } = oklch
 
   const a = C * Math.cos((H * Math.PI) / 180)
@@ -233,24 +233,6 @@ export function generateNeutralScale(seed: HexColor, isDark: boolean, ink?: HexC
   return scale
 }
 
-export function generateAlphaScale(scale: HexColor[], isDark: boolean): HexColor[] {
-  const alphas = isDark
-    ? [0.02, 0.04, 0.08, 0.12, 0.16, 0.2, 0.26, 0.36, 0.44, 0.52, 0.76, 0.96]
-    : [0.01, 0.03, 0.06, 0.09, 0.12, 0.15, 0.2, 0.28, 0.48, 0.56, 0.64, 0.88]
-
-  return scale.map((hex, i) => {
-    const { r, g, b } = hexToRgb(hex)
-    const a = alphas[i]
-
-    const bg = isDark ? 0 : 1
-    const blendedR = r * a + bg * (1 - a)
-    const blendedG = g * a + bg * (1 - a)
-    const blendedB = b * a + bg * (1 - a)
-
-    return rgbToHex(blendedR, blendedG, blendedB)
-  })
-}
-
 export function mixColors(color1: HexColor, color2: HexColor, amount: number): HexColor {
   const c1 = hexToOklch(color1)
   const c2 = hexToOklch(color2)
@@ -301,25 +283,7 @@ export function blend(color: HexColor, background: HexColor, alpha: number): Hex
   )
 }
 
-export function lighten(color: HexColor, amount: number): HexColor {
-  const oklch = hexToOklch(color)
-
-  return oklchToHex({
-    ...oklch,
-    l: clamp(oklch.l + amount, 0, 1),
-  })
-}
-
-export function darken(color: HexColor, amount: number): HexColor {
-  const oklch = hexToOklch(color)
-
-  return oklchToHex({
-    ...oklch,
-    l: clamp(oklch.l - amount, 0, 1),
-  })
-}
-
-export function withAlpha(color: HexColor, alpha: number): string {
+export function withAlpha(color: HexColor, alpha: number): `rgba(${string})` {
   const { r, g, b } = hexToRgb(color)
 
   return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${alpha})`

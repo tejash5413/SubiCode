@@ -36,8 +36,8 @@ describe("OpenRouterPlugin", () => {
 
       expect((yield* catalog.get(Provider.ID.openrouter))?.headers).toEqual({
         Existing: "value",
-        "HTTP-Referer": "https://stlearnsmart.in/",
-        "X-Title": "Subi Code",
+        "HTTP-Referer": "https://stlearnsmart.in/subi-code",
+        "X-Title": "SubiCode",
       })
       expect((yield* catalog.get(Provider.ID.make("nvidia")))?.headers).toBeUndefined()
     }),

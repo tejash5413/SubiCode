@@ -1,5 +1,27 @@
 import { expect, test } from "bun:test"
+import { fileURLToPath, pathToFileURL } from "node:url"
+import { mkdtemp, rm } from "node:fs/promises"
+import os from "node:os"
+import path from "node:path"
 import { brandCopy, brandMessages } from "./product.js"
+
+test("a compiled release shows its embedded version instead of the source fallback", async () => {
+  const result = await Bun.build({
+    entrypoints: [fileURLToPath(new URL("./product.ts", import.meta.url))],
+    target: "bun",
+    define: { OPENCODE_VERSION: JSON.stringify("2.0.2") },
+  })
+  expect(result.success).toBe(true)
+  const directory = await mkdtemp(path.join(os.tmpdir(), "subi-version-"))
+  try {
+    const file = path.join(directory, "product.mjs")
+    await Bun.write(file, result.outputs[0])
+    const module = await import(pathToFileURL(file).href)
+    expect(module.Product.version).toBe("2.0.2")
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
 
 test("inherited presentation copy uses Subi while retaining compatible identifiers and placeholders", () => {
   expect(brandCopy("OpenCode · opencode pair · opencode service get password")).toBe(

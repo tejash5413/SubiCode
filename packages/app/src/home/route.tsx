@@ -45,7 +45,6 @@ export function Home() {
         thumbHoverTarget={scroll.viewport.hoverTarget()}
         viewportRef={scroll.viewport.setViewport}
         onScroll={(event) => scroll.viewport.update(event.currentTarget.scrollTop)}
-        onWheel={scroll.viewport.containOuterWheel}
       >
         <div
           class={`subi-home-layout

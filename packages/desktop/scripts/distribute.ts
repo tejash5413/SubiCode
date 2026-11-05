@@ -21,6 +21,7 @@ const cliDist = process.env.OPENCODE_CLI_DIST ?? path.join(output, "cli-build")
 const env = {
   ...process.env,
   OPENCODE_CHANNEL: process.env.OPENCODE_CHANNEL ?? "dev",
+  OPENCODE_TARGET: target.directory.replace("cli-", ""),
   OPENCODE_CLI_TARGET: target.target,
   OPENCODE_CLI_DIST: cliDist,
 }
@@ -36,7 +37,6 @@ if (!process.env.OPENCODE_CLI_DIST)
     process.execPath,
     "run",
     "packages/cli/script/build.ts",
-    `--target=${target.directory.replace("cli-", "opencode-")}`,
     "--skip-install",
     `--outdir=${cliDist}`,
   ])
@@ -89,18 +89,20 @@ await Bun.write(
 )
 
 const wrapper = await stageNpmWrapper(root, path.join(output, "packages/npm-wrapper"), version)
-await run(["npm", "pack", "--ignore-scripts", "--pack-destination", output], wrapper)
-await run(["node", path.join(root, "script/qualify-subicode-npm.mjs"), output])
 
-await run([process.execPath, "run", "prebuild"], path.join(root, "packages/desktop"))
+await run(["npm", "pack", "--ignore-scripts", "--pack-destination", output], wrapper)
+
+await run(["node", path.join(root, "script/qualify-subicode-npm.mjs"), output])
 
 await run([process.execPath, "run", "build"], path.join(root, "packages/desktop"))
 
 await run(
   [
     process.execPath,
-    "run",
-    "package",
+    "x",
+    "electron-builder",
+    "--config",
+    "electron-builder.config.ts",
     `--${process.arch}`,
     "--publish",
     "never",

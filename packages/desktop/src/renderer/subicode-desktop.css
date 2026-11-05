@@ -1,0 +1,374 @@
+/* Desktop chrome uses the active theme's surfaces with a shared SubiCode accent. */
+:root {
+  --subi-desktop-accent: #394ebe;
+  --subi-desktop-action: #394ebe;
+  --subi-desktop-action-hover: #3042a5;
+  --subi-desktop-glow: #6e80f3;
+  --subi-desktop-canvas: var(--v2-background-bg-base);
+  --subi-desktop-rail: color-mix(in srgb, var(--subi-desktop-glow) 7%, var(--v2-background-bg-deep));
+  --subi-desktop-tint: color-mix(in srgb, var(--subi-desktop-glow) 13%, var(--subi-desktop-canvas));
+  --subi-desktop-line: color-mix(in srgb, var(--subi-desktop-glow) 16%, var(--v2-border-border-base));
+  --subi-desktop-shadow: 0 8px 28px color-mix(in srgb, #171e4d 12%, transparent);
+}
+
+:root[data-color-scheme="dark"] {
+  --subi-desktop-accent: #b5c0ff;
+  --subi-desktop-shadow: 0 8px 28px #0005;
+}
+
+:root .subi-workspace-sidebar {
+  width: clamp(190px, 18vw, 238px);
+  padding: 14px 14px 16px;
+  border-color: var(--subi-desktop-line);
+  background: var(--subi-desktop-rail);
+}
+
+:root .subi-workspace-brand {
+  gap: 11px;
+  padding: 0 4px 22px;
+  font-size: 18px;
+}
+
+:root .subi-workspace-brand [data-component="logo-mark"],
+:root .subi-desktop-welcome-mark,
+:root .settings-chrome .settings-brand-mark {
+  background: linear-gradient(145deg, #526aeb, #3b45af);
+  border-radius: 10px;
+  box-shadow: 0 4px 10px #3b45af30;
+}
+
+:root .subi-workspace-brand [data-component="logo-mark"] {
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+}
+
+:root :is(.subi-workspace-brand, .subi-desktop-welcome-mark, .settings-chrome) [data-slot="brand-mark"] {
+  filter: none;
+}
+
+:root :is(.subi-workspace-sidebar .subi-new-task, .subi-recent [data-action="home-new-session"]) {
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--subi-desktop-action);
+  color: #fff;
+  font-weight: var(--font-weight-medium);
+}
+
+:root :is(.subi-workspace-sidebar .subi-new-task, .subi-recent [data-action="home-new-session"]):enabled:hover {
+  background: var(--subi-desktop-action-hover);
+  color: #fff;
+}
+
+:root .subi-new-task kbd {
+  padding-inline: 5px;
+  border-radius: 4px;
+  background: #ffffff20;
+  color: #fff;
+}
+
+:root .subi-workspace-nav {
+  gap: 4px;
+  margin-block: 18px 22px;
+}
+
+:root .subi-workspace-nav button {
+  border: 1px solid transparent;
+  border-radius: 9px;
+}
+
+:root .subi-workspace-nav button[aria-current="page"] {
+  border-color: var(--subi-desktop-line);
+  background: var(--subi-desktop-tint);
+  color: var(--subi-desktop-accent);
+  font-weight: var(--font-weight-medium);
+}
+
+:root .subi-workspace-tasks-label {
+  padding-block: 10px 6px;
+  border-block-start: 1px solid var(--subi-desktop-line);
+  font-size: 11px;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+:root .subi-workspace-account {
+  padding: 5px;
+  border: 1px solid var(--subi-desktop-line);
+  border-radius: 11px;
+  background: var(--subi-desktop-canvas);
+}
+
+:root .subi-workspace-account small {
+  font-size: 11px;
+}
+
+:root :is(.subi-workspace-sidebar, .subi-new-session, .settings-workspace) button:focus-visible {
+  outline: 2px solid var(--subi-desktop-accent);
+  outline-offset: 2px;
+}
+
+/* The welcome surface carries the brand. The chat keeps the timeline quiet. */
+:root .subi-new-session {
+  background:
+    radial-gradient(ellipse at 64% 0%, color-mix(in srgb, var(--subi-desktop-glow) 17%, transparent), transparent 68%),
+    var(--subi-desktop-canvas);
+}
+
+:root .subi-workspace-header {
+  border-color: var(--subi-desktop-line);
+  background: color-mix(in srgb, var(--subi-desktop-canvas) 75%, transparent);
+}
+
+:root .subi-account-button {
+  border-color: var(--subi-desktop-line);
+  border-radius: 999px;
+  background: var(--subi-desktop-canvas);
+  color: var(--subi-desktop-accent);
+}
+
+:root .subi-welcome-body {
+  padding: clamp(22px, 5vh, 48px) clamp(16px, 5vw, 64px) clamp(30px, 6vh, 64px);
+}
+
+:root .subi-welcome-content {
+  max-width: 800px;
+}
+
+:root .subi-desktop-welcome-mark {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin-block-end: 18px;
+  place-items: center;
+  border-radius: 15px;
+}
+
+:root .subi-desktop-welcome-mark [data-component="logo-mark"] {
+  width: 34px;
+}
+
+:root .subi-welcome-heading h1 {
+  font-size: clamp(28px, 4vw, 48px);
+  line-height: 1.1;
+  font-weight: 620;
+  letter-spacing: -0.045em;
+}
+
+:root .subi-welcome-heading p {
+  color: var(--v2-text-text-muted);
+}
+
+:root .subi-task-suggestions {
+  margin-block: 26px 16px;
+}
+
+:root .subi-task-suggestions button {
+  border-color: var(--subi-desktop-line);
+  border-radius: 11px;
+  background: var(--subi-desktop-canvas);
+}
+
+:root .subi-task-suggestions button > svg:first-child {
+  color: var(--subi-desktop-accent);
+}
+
+:root .subi-task-suggestions button:enabled:hover {
+  border-color: var(--subi-desktop-accent);
+  background: var(--subi-desktop-tint);
+}
+
+:root :is(.subi-welcome-composer, .subi-session-panel) [data-component="composer"] {
+  border: 1px solid var(--subi-desktop-line);
+  border-radius: 15px;
+  background: var(--subi-desktop-canvas);
+  box-shadow: var(--subi-desktop-shadow);
+}
+
+:root :is(.subi-welcome-composer, .subi-session-panel) [data-component="composer"]:focus-within {
+  border-color: var(--subi-desktop-accent);
+}
+
+:root .subi-session-panel {
+  border: 1px solid var(--subi-desktop-line);
+  border-radius: 14px;
+}
+
+:root .subi-session-panel .session-header-layout {
+  border-bottom: 1px solid var(--subi-desktop-line);
+}
+
+:root .subi-recent-header {
+  border-color: var(--subi-desktop-line);
+  background: linear-gradient(100deg, var(--subi-desktop-tint), var(--subi-desktop-canvas) 78%);
+}
+
+:root .subi-recent-header h1 {
+  font-size: clamp(27px, 3vw, 36px);
+  font-weight: 620;
+}
+
+:root .subi-recent-eyebrow {
+  color: var(--subi-desktop-accent);
+  font-size: 11px;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+/* Settings, account, and dialogs share the same chrome as the workspace. */
+:root .settings-workspace .settings-chrome,
+:root .settings-screen.settings-workspace
+  > .settings[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
+  > .settings-sidebar {
+  border-color: var(--subi-desktop-line);
+  background: var(--subi-desktop-rail);
+}
+
+:root .settings-workspace .settings-chrome .settings-brand-mark {
+  width: 29px;
+  height: 29px;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+:root .settings-workspace .settings-chrome-version {
+  padding: 3px 8px;
+  border: 1px solid var(--subi-desktop-line);
+  border-radius: 999px;
+  background: var(--subi-desktop-canvas);
+}
+
+:root .settings-workspace .settings-nav-groups [data-slot="tabs-v2-trigger-wrapper"] {
+  border-radius: 9px;
+}
+
+:root .settings-workspace .settings-nav-groups [role="tab"][aria-selected="true"] {
+  border-radius: 9px;
+  background: var(--subi-desktop-tint);
+  color: var(--subi-desktop-accent);
+  font-weight: var(--font-weight-medium);
+}
+
+:root .settings-workspace .settings-breadcrumb {
+  color: var(--subi-desktop-accent);
+}
+
+:root .settings-workspace .settings-tab-title {
+  font-size: clamp(25px, 3vw, 35px);
+  line-height: 1.2;
+  font-weight: 620;
+}
+
+:root .settings-workspace :is([data-component="settings-list"], .settings-project-list, .settings-learnsmart) {
+  padding-inline: 14px;
+  border: 1px solid var(--subi-desktop-line);
+  border-radius: 12px;
+  background: var(--subi-desktop-canvas);
+}
+
+:root .settings-workspace [data-component="settings-row"] {
+  border-color: var(--subi-desktop-line);
+}
+
+:root .settings-workspace [data-component="settings-row"]:last-child {
+  border-bottom: 0;
+}
+
+:root .settings-workspace [data-slot="settings-row-copy"] {
+  min-width: 0;
+  gap: 5px;
+}
+
+:root :is(.settings-workspace, [data-component="dialog-v2"]) :is(
+  [data-component="text-input-v2"],
+  [data-component="textarea-v2"],
+  [data-component="select-v2"],
+  select:not([hidden])
+) {
+  border: 1px solid var(--subi-desktop-line);
+  border-radius: 9px;
+  background: var(--subi-desktop-canvas);
+  box-shadow: none;
+
+  &:not([data-component="textarea-v2"]) {
+    min-height: 34px;
+  }
+
+  &:focus-within:not(:is([data-invalid], [aria-invalid="true"], [data-disabled], :disabled)) {
+    border-color: var(--subi-desktop-accent);
+    outline-color: var(--subi-desktop-accent);
+  }
+
+  &:is([data-invalid], [aria-invalid="true"]) {
+    border-color: var(--v2-state-fg-danger);
+  }
+}
+
+:root .settings-workspace [data-slot="switch-control"] {
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+}
+
+:root .settings-workspace [data-component="switch"] [data-slot="switch-thumb"] {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+:root .settings-workspace [data-component="switch"][data-checked] [data-slot="switch-control"] {
+  background: var(--subi-desktop-action);
+}
+
+:root .settings-workspace [data-component="switch"][data-checked] [data-slot="switch-thumb"] {
+  transform: translateX(14px);
+  background: #fff;
+}
+
+:root .settings-workspace [data-component="switch"][data-checked]:dir(rtl) [data-slot="switch-thumb"] {
+  transform: translateX(-14px);
+}
+
+:root .settings-workspace :is(.settings-action-link, [data-component="button-v2"][data-variant="neutral"]) {
+  border-radius: 9px;
+}
+
+:root [data-component="menu-v2-content"][data-slot="select-v2-content"] {
+  border: 1px solid var(--subi-desktop-line);
+  border-radius: 10px;
+}
+
+:root [data-component="dialog-v2"] [data-slot="dialog-container"] {
+  border: 1px solid var(--subi-desktop-line);
+  border-block-start: 3px solid var(--subi-desktop-accent);
+  border-radius: 15px;
+  box-shadow: var(--subi-desktop-shadow);
+}
+
+@container (min-width: 620px) {
+  :root .subi-task-suggestions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 740px) {
+  :root .subi-welcome-body {
+    align-items: flex-start;
+    padding-block: 20px 54px;
+  }
+
+  :root .subi-desktop-welcome-mark {
+    width: 42px;
+    height: 42px;
+    margin-block-end: 12px;
+  }
+
+  :root .subi-task-suggestions {
+    margin-block: 16px 12px;
+  }
+
+  :root .subi-welcome-composer [data-component="composer-editor"] {
+    min-height: 76px;
+  }
+}

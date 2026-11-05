@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.sessionReview.title": "Setubroytingar",
   "ui.sessionReview.title.git": "Git broytingar",
   "ui.sessionReview.title.branch": "Greinabroytingar",
@@ -193,7 +193,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(einki svar)",
   "ui.question.review.notAnswered": "(ikki svarað)",
   "ui.question.multiHint": "Vel øll svar, sum eru galdandi",
-  "ui.question.singleHint": "Vel eitt svar",
   "ui.question.custom.placeholder": "Skriva títt svar…",
   "ui.tool.loadedFile": "{{path}} varð lisið inn",
   "ui.tool.loadedSkill": "Førleikin {{name}} varð lisin inn",

@@ -20,7 +20,7 @@ type ModelGroup<T> = { category: string; items: T[] }
 
 export const CONSOLE_GROUP_KEY = "console:opencode"
 
-export function CustomManagedProviderIcon(props: { class?: string }) {
+function CustomManagedProviderIcon(props: { class?: string }) {
   return <img data-component="custom-managed-provider-icon" src={customManagedProvider} alt="" class={props.class} />
 }
 
@@ -30,7 +30,8 @@ export function ProviderModelIcon(props: { provider: ModelProvider; class?: stri
       props.provider.canonical,
       props.provider.canonical?.replace(/-token-plan$/, ""),
       props.provider.id.replace(/^console-/, ""),
-    ].find((id): id is IconName => !!id && id !== "synthetic" && iconNames.includes(id as IconName))
+    // SAFETY: membership in the generated iconNames list validates the candidate IconName.
+    ].find((id): id is IconName => !!id && id !== "synthetic" && iconNames.some((name) => name === id))
 
   return (
     <Switch>
@@ -239,7 +240,9 @@ export function ProviderModelGroup(props: {
                 />
                 <Menu.Portal>
                   <Menu.Content>
-                    <Menu.Item onSelect={() => setVisibility(true)}>{language.t("settings.models.enableAll")}</Menu.Item>
+                    <Menu.Item onSelect={() => setVisibility(true)}>
+                      {language.t("settings.models.enableAll")}
+                    </Menu.Item>
                     <Menu.Item onSelect={() => setVisibility(false)}>
                       {language.t("settings.models.disableAll")}
                     </Menu.Item>

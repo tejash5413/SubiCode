@@ -75,3 +75,34 @@ See [Windows publisher signing](WINDOWS_SIGNING.md) for the signing identity,
 build integration, signature verification and publication requirements. The
 current public installers remain unsigned until a verified signing identity
 is configured and the signed output passes verification.
+
+## SubiCode update configuration
+
+Production desktop builds check the public GitHub repository `tejash5413/SubiCode`
+for a newer stable release with a matching installer. They notify the user and open
+that release page only after Download is confirmed. Downloading and running the
+installer remain user actions; there is no background installer download or automatic
+restart. Development and beta builds do not check for stable updates. Microsoft
+Store builds leave updates to the Store. Upstream OpenCode update feeds stay disabled.
+
+Qualification records `desktopUpdateDelivery: "manual-github"` and verifies that
+the native Settings screen supports this mode. Download preparation and publication
+then omit automatic-install YAML feeds and blockmaps. Native execution, source-commit
+matching and byte checksums remain required. Legacy/in-app delivery continues to
+require qualified feeds and Windows/macOS signature verification. Unsigned manual
+downloads are labelled as unsigned; macOS packages are not notarized.
+
+The CLI checks only `@subicodeagent/subi-cli` on `https://registry.npmjs.org`.
+Its native package location and global npm installation must be recognized before
+an in-place upgrade. The launcher must pin all six platform packages to its own
+stable version. `subi upgrade` installs that exact launcher version through npm,
+includes optional native dependencies, and verifies `subi --version` afterward.
+The default CLI policy is notification; existing `update: "auto"`, `"notify"`
+and `"disable"` preferences remain supported. Bundled desktop/VSIX binaries never
+upgrade the global CLI. Build-injected versions drive the terminal's version labels.
+
+This configuration does not modify installed or published 2.0.1 binaries. Build and
+qualify 2.0.2 on each claimed target. Keep the existing immutable 2.0.1 release intact;
+users install the first notification-enabled release manually once. Signing and
+notarization remain separate work before enabling any future in-app installation.
+Configuration alone does not publish a release.

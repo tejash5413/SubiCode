@@ -19,7 +19,10 @@ test.each([
   expect(config.appId).toBe(appId)
   expect(config.productName).toBe(productName)
   expect(config.protocols).toMatchObject({ schemes: ["subi"] })
-  expect(config.publish ?? null).toBeNull()
+  expect(config.publish ?? null).toEqual(channel === "prod"
+    ? { provider: "github", owner: "tejash5413", repo: "SubiCode", releaseType: "release" }
+    : null)
+  expect(config.win?.verifyUpdateCodeSignature).toBe(true)
   expect(config.artifactName).toBe("subi-desktop-${os}-${arch}.${ext}")
 })
 

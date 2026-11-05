@@ -8,11 +8,33 @@ const rendererPermissions = new Set(["clipboard-sanitized-write", "notifications
 export function allowRendererPermissions(win: BrowserWindow) {
   const webContentsId = win.webContents.id
   win.webContents.session.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    if (permission === "media") {
+      callback(
+        webContents.id === webContentsId &&
+          isRendererUrl(details.requestingUrl) &&
+          details.isMainFrame &&
+          "mediaTypes" in details &&
+          !!details.mediaTypes?.length &&
+          details.mediaTypes.every((type) => type === "audio"),
+      )
+
+      return
+    }
+
     callback(
       rendererPermissions.has(permission) && isRendererUrl(details.requestingUrl) && webContents.id === webContentsId,
     )
   })
   win.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    if (permission === "media") {
+      return (
+        webContents?.id === webContentsId &&
+        isRendererUrl(details.requestingUrl) &&
+        details.isMainFrame &&
+        details.mediaType === "audio"
+      )
+    }
+
     if (!rendererPermissions.has(permission)) return false
 
     if (webContents && webContents.id !== webContentsId) return false
@@ -21,7 +43,7 @@ export function allowRendererPermissions(win: BrowserWindow) {
   })
 }
 
-export function wireNavigationPolicy(win: BrowserWindow, openExternalURL: (url: string) => unknown) {
+export function wireNavigationPolicy(win: BrowserWindow, openExternalURL: (url: string) => void) {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (!isRendererUrl(url)) openExternalURL(url)
 

@@ -10,6 +10,14 @@ export function action(current: string, latest: string, policy: Policy): Action 
   const currentVersion = parseReleaseVersion(current)
   const latestVersion = parseReleaseVersion(latest)
   if (!currentVersion || !latestVersion || sameRelease(currentVersion, latestVersion)) return "none"
+  const currentCore = currentVersion.core.split(".")
+  const latestCore = latestVersion.core.split(".")
+  const different = currentCore.findIndex((part, index) => part !== latestCore[index])
+  if (different !== -1) {
+    const left = currentCore[different]
+    const right = latestCore[different]
+    if (right.length < left.length || (right.length === left.length && right < left)) return "none"
+  }
   return policy
 }
 

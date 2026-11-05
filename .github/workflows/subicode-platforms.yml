@@ -8,7 +8,7 @@ on:
       version:
         description: Explicit SubiCode build version
         required: true
-        default: 2.0.1
+        default: 2.0.2
       qualification_run_id:
         description: Requalify existing native artifacts from this run instead of rebuilding
         required: false
@@ -68,9 +68,9 @@ jobs:
       run:
         shell: bash
     env:
-      OPENCODE_VERSION: ${{ inputs.version || '2.0.1' }}
+      OPENCODE_VERSION: ${{ inputs.version || '2.0.2' }}
       OPENCODE_CHANNEL: prod
-      SUBICODE_OUTPUT: artifacts/platforms/${{ inputs.version || '2.0.1' }}/${{ matrix.platform }}
+      SUBICODE_OUTPUT: artifacts/platforms/${{ inputs.version || '2.0.2' }}/${{ matrix.platform }}
       # Desktop artifacts remain unsigned. npm publication is a separate, manual, qualified step.
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
@@ -108,8 +108,8 @@ jobs:
         with:
           name: subicode-npm-${{ matrix.platform }}
           path: |
-            artifacts/platforms/${{ inputs.version || '2.0.1' }}/${{ matrix.platform }}/subicodeagent-subi-cli*.tgz
-            artifacts/platforms/${{ inputs.version || '2.0.1' }}/${{ matrix.platform }}/packages/qualification.json
+            artifacts/platforms/${{ inputs.version || '2.0.2' }}/${{ matrix.platform }}/subicodeagent-subi-cli*.tgz
+            artifacts/platforms/${{ inputs.version || '2.0.2' }}/${{ matrix.platform }}/packages/qualification.json
           if-no-files-found: error
           retention-days: 14
       - name: Compile extension-host qualification
@@ -119,18 +119,18 @@ jobs:
         if: runner.os == 'Linux'
         continue-on-error: ${{ inputs.desktop_only }}
         timeout-minutes: 12
-        run: xvfb-run -a node packages/desktop/scripts/qualify-distribution.mjs "$SUBICODE_OUTPUT"
+        run: xvfb-run -a node packages/desktop/scripts/qualify-distribution.mjs "$SUBICODE_OUTPUT" ${{ inputs.desktop_only && '--desktop-only' || '' }}
       - name: Qualify packaged desktop and extension on Windows and macOS
         if: runner.os != 'Linux'
         continue-on-error: ${{ inputs.desktop_only }}
         timeout-minutes: 12
-        run: node packages/desktop/scripts/qualify-distribution.mjs "$SUBICODE_OUTPUT"
+        run: node packages/desktop/scripts/qualify-distribution.mjs "$SUBICODE_OUTPUT" ${{ inputs.desktop_only && '--desktop-only' || '' }}
       - name: Save packages and qualification status
         if: ${{ always() && !inputs.qualification_run_id }}
         uses: actions/upload-artifact@v4
         with:
           name: subicode-${{ matrix.platform }}
-          path: artifacts/platforms/${{ inputs.version || '2.0.1' }}/${{ matrix.platform }}/
+          path: artifacts/platforms/${{ inputs.version || '2.0.2' }}/${{ matrix.platform }}/
           if-no-files-found: error
           retention-days: 14
       - name: Save native qualification results
@@ -139,9 +139,9 @@ jobs:
         with:
           name: subicode-qualification-${{ matrix.platform }}
           path: |
-            artifacts/platforms/${{ inputs.version || '2.0.1' }}/${{ matrix.platform }}/packages/qualification.json
-            artifacts/platforms/${{ inputs.version || '2.0.1' }}/${{ matrix.platform }}/desktop-qualification.png
-            artifacts/platforms/${{ inputs.version || '2.0.1' }}/${{ matrix.platform }}/vscode-logs/
+            artifacts/platforms/${{ inputs.version || '2.0.2' }}/${{ matrix.platform }}/packages/qualification.json
+            artifacts/platforms/${{ inputs.version || '2.0.2' }}/${{ matrix.platform }}/desktop-qualification.png
+            artifacts/platforms/${{ inputs.version || '2.0.2' }}/${{ matrix.platform }}/vscode-logs/
           if-no-files-found: error
           retention-days: 14
       - name: Prepare qualified public download files
@@ -169,6 +169,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: ./.github/actions/setup-bun
+        with:
+          install-flags: --ignore-scripts
       - name: Download qualified desktop and extension releases
         run: gh run download "${{ inputs.publish_run_id }}" --repo "$GITHUB_REPOSITORY" --pattern 'subicode-downloads-*' --dir artifacts/downloads
       - name: Download additional qualified targets

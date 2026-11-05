@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.sessionReview.title": "Canvis de sessió",
   "ui.sessionReview.title.git": "Canvis de Git",
   "ui.sessionReview.title.branch": "Canvis de branca",
@@ -198,7 +198,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(sense resposta)",
   "ui.question.review.notAnswered": "(no contestat)",
   "ui.question.multiHint": "Seleccioneu totes les respostes aplicables",
-  "ui.question.singleHint": "Seleccioneu una resposta",
   "ui.question.custom.placeholder": "Escriu la teva resposta…",
   "ui.tool.loadedFile": "S'ha carregat {{path}}",
   "ui.tool.loadedSkill": "S'ha carregat l'habilitat {{name}}",

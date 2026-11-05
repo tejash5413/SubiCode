@@ -9,8 +9,6 @@ import { marks } from "../lifecycle/marks"
 
 const MAX_LOG_AGE_DAYS = 7
 
-const TAIL_LINES = 1000
-
 const EXPORT_WINDOW = 24 * 60 * 60 * 1000
 
 const MAX_EXPORT_FILE_SIZE = 50 * 1024 * 1024
@@ -185,18 +183,6 @@ function exportDebugLogsEffect(fs: FileSystem.FileSystem, path: Path.Path) {
     )
   })
 }
-
-export const tail = Effect.fn("DesktopLogging.tail")(function* () {
-  const fs = yield* FileSystem.FileSystem
-
-  return yield* Effect.gen(function* () {
-    const path = log.transports.file.getFile().path
-    const contents = yield* fs.readFileString(path)
-    const lines = contents.split("\n")
-
-    return lines.slice(Math.max(0, lines.length - TAIL_LINES)).join("\n")
-  }).pipe(Effect.orElseSucceed(() => ""))
-})
 
 function initRunDirectory(fs: FileSystem.FileSystem, path: Path.Path) {
   root = path.join(app.getPath("userData"), "logs")

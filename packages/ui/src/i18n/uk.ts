@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.messagePart.tools.used.few": "Використано {{count}} рази: {{tools}}",
   "ui.messagePart.tools.used.many": "Використано {{count}} разів: {{tools}}",
   "ui.common.fileCount.few": "{{count}} файли",
@@ -241,7 +241,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(немає відповіді)",
   "ui.question.review.notAnswered": "(не відповіли)",
   "ui.question.multiHint": "Виберіть усі відповідні варіанти",
-  "ui.question.singleHint": "Виберіть одну відповідь",
   "ui.question.custom.placeholder": "Введіть свою відповідь…",
   "ui.messagePart.context.match.one": "({{count}} збіг)",
   "ui.messagePart.context.match.other": "({{count}} збігу)",

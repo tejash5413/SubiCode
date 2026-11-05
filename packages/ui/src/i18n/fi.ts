@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.common.fileCount.one": "{{count}} tiedosto",
   "ui.common.fileCount.other": "{{count}} tiedostoa",
   "ui.messagePart.compaction.started": "Istunnon tiivistys aloitettu",
@@ -209,7 +209,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(ei vastausta)",
   "ui.question.review.notAnswered": "(ei vastattu)",
   "ui.question.multiHint": "Valitse kaikki sopivat vastaukset",
-  "ui.question.singleHint": "Valitse yksi vastaus",
   "ui.question.custom.placeholder": "Kirjoita vastauksesi…",
   "ui.lineComment.contextPlaceholder": "Lisää tämän muutoksen konteksti",
   "ui.promptInput.noMatchingItems": "Ei vastaavia kohteita",

@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { prepareDesktopUpdates } from "./desktop-updates.mjs"
 import { spawnSync } from "node:child_process"
 
 const root = path.resolve(process.argv[2])
@@ -12,14 +13,16 @@ const supported = ["win32-x64", "win32-arm64", "darwin-x64", "darwin-arm64", "li
 const platforms = process.env.SUBICODE_DESKTOP_PLATFORMS ? process.env.SUBICODE_DESKTOP_PLATFORMS.split(",") : supported
 assert.ok(platforms.length > 0 && platforms.every(item => supported.includes(item)))
 assert.equal(new Set(platforms).size, platforms.length)
-const repo = "tejash5413/Subi-Code"
+const repo = "tejash5413/SubiCode"
 const assets = []
+const records = []
 const desktopOnly = process.argv.includes("--desktop-only")
 const commits = new Set()
 const names = new Set()
 for (const platform of platforms) {
   const directory = path.join(root, `subicode-downloads-${platform}`)
   const record = JSON.parse(await readFile(path.join(directory, `downloads-${platform}.json`), "utf8"))
+  records.push({ directory, record })
   for (const field of desktopOnly ? ["nativeExecution", "desktopExecution"] : ["nativeExecution", "desktopExecution", "extensionExecution"])
     assert.match(record[field] ?? "", /^passed:/, `${platform}: ${field} missing`)
   assert.match(record.sourceCommit, /^[a-f0-9]{40}$/)
@@ -46,18 +49,32 @@ for (const platform of platforms) {
   }
 }
 assert.equal(commits.size, 1, "Desktop packages must use the same source commit")
+const deliveries = new Set(records.map(({ record }) => record.updateDelivery ?? "in-app"))
+assert.equal(deliveries.size, 1, "A release cannot mix manual downloads and automatic-install feeds")
+const manualDownloads = deliveries.has("manual-github")
+if (manualDownloads) for (const { record } of records)
+  assert.match(record.manualUpdatePolicy ?? "", /^passed:/, "Manual download UI must pass native qualification")
+const updateAssets = manualDownloads ? [] : await prepareDesktopUpdates(root, version, records)
 const manifest = { version, cli: {
   available: true, nodeMinimum: 22,
   command: `npm install -g @subicodeagent/subi-cli@${version}`, platforms: supported,
-}, desktopSourceCommit: [...commits][0], downloads: assets.map(item => item.download) }
+}, desktopSourceCommit: [...commits][0], updateDelivery: manualDownloads ? "manual-github" : "in-app", downloads: assets.map(item => item.download),
+  updateAssets: updateAssets.map(({ file, ...item }) => ({ ...item, url: `https://github.com/${repo}/releases/download/${tag}/${item.filename}` })),
+}
 const manifestFile = path.join(root, "subicode-release.json")
 const checksumFile = path.join(root, "SHA256SUMS.txt")
 await writeFile(manifestFile, JSON.stringify(manifest, null, 2) + "\n")
-await writeFile(checksumFile, assets.map(({ download }) => `${download.sha256}  ${download.filename}`).join("\n") + "\n")
+await writeFile(checksumFile, [...assets.map(({ download }) => download), ...updateAssets].map(item => `${item.sha256}  ${item.filename}`).join("\n") + "\n")
 console.log(`Verified ${assets.length} ${desktopOnly ? "desktop" : "desktop and VSIX"} downloads across ${platforms.length} native platforms`)
 if (!process.argv.includes("--publish")) {
   console.log(`Preflight only: ${manifestFile}`)
   process.exit(0)
+}
+
+// Windows/macOS update installers must be signed and independently checked before their feed is published.
+for (const { record } of manualDownloads ? [] : records) {
+  if (record.downloads.some(item => item.product === "desktop" && item.platform !== "linux"))
+    assert.match(record.updateSignatureVerification ?? "", /^passed:/, "Signed desktop updater qualification is required before publication")
 }
 
 function gh(args) {
@@ -85,7 +102,7 @@ if (existing) {
       if (!candidate) manifest.downloads.push(item)
     }
     await writeFile(manifestFile, JSON.stringify(manifest, null, 2) + "\n")
-    await writeFile(checksumFile, manifest.downloads.map(item => `${item.sha256}  ${item.filename}`).join("\n") + "\n")
+    await writeFile(checksumFile, [...manifest.downloads, ...updateAssets].map(item => `${item.sha256}  ${item.filename}`).join("\n") + "\n")
   }
 }
 const notes = path.join(root, "release-notes.md")
@@ -94,6 +111,7 @@ await writeFile(notes, `SubiCode ${version} provides the terminal CLI, desktop a
   `Desktop: choose the installer for your system and processor. Windows uses .exe, macOS .dmg or .zip, Linux AppImage, .deb or .rpm. Install extensions using VS Code's Install from VSIX command.\n\n` +
   `Verified desktop targets: ${[...new Set(manifest.downloads.filter(item => item.product === "desktop").map(item => `${item.platform}-${item.arch}`))].join(", ")}. Desktop checks cover startup, Plan/Build, settings, MCP form and plugin/skill setup. Verified VS Code extension targets: ${[...new Set(manifest.downloads.filter(item => item.product === "vscode").map(item => `${item.platform}-${item.arch}`))].join(", ")}. Extension checks cover bundled CLI startup and terminal reuse. Other product/processor combinations remain unavailable until their own native checks pass. Desktop source: ${source}.\n\n` +
   `These desktop installers are unsigned; macOS builds are not notarized. Operating-system publisher checks may require manual approval. SHA256SUMS.txt lists every download's checksum.\n\n` +
+  (manualDownloads ? `Updates: SubiCode checks this repository for newer stable releases and shows a notification. Users choose Download, then download and run the installer themselves. No automatic installer feed is published.\n\n` : "") +
   `Account/provider access, billing and mobile pairing require their own live-service checks and are not qualified by these packaging tests.\n\n` +
   `Guides: https://stlearnsmart.in/subi-code/docs\n`)
 if (!existing) gh(["release", "create", tag, "--target", source, "--draft", "--title", `SubiCode ${version}`, "--notes-file", notes])
@@ -105,11 +123,23 @@ for (const item of assets) {
   }
   gh(["release", "upload", tag, item.file])
 }
+for (const item of updateAssets) {
+  const previous = remote?.assets.find(asset => asset.name === item.filename)
+  if (previous) {
+    assert.equal(previous.digest, `sha256:${item.sha256}`, "Published update metadata cannot be overwritten")
+    continue
+  }
+  gh(["release", "upload", tag, item.file])
+}
 gh(["release", "upload", tag, manifestFile, checksumFile, "--clobber"])
 const uploaded = JSON.parse(gh(["release", "view", tag, "--json", "assets"]))
 for (const { download } of assets) {
   const asset = uploaded.assets.find(item => item.name === download.filename)
   assert.ok(asset && asset.size === download.size && asset.state === "uploaded", `${download.filename}: upload incomplete`)
+}
+for (const item of updateAssets) {
+  const asset = uploaded.assets.find(asset => asset.name === item.filename)
+  assert.ok(asset && asset.size === item.size && asset.state === "uploaded", `${item.filename}: updater upload incomplete`)
 }
 gh(["release", "edit", tag, "--draft=false", "--latest", "--notes-file", notes])
 console.log(`Published https://github.com/${repo}/releases/tag/${tag}`)

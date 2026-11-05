@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.sessionReview.title": "Seanso pakeitimai",
   "ui.sessionReview.title.git": "Git pakeitimai",
   "ui.sessionReview.title.branch": "Šakos pakeitimai",
@@ -203,7 +203,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(nėra atsakymo)",
   "ui.question.review.notAnswered": "(neatsakyta)",
   "ui.question.multiHint": "Pasirinkite visus tinkamus atsakymus",
-  "ui.question.singleHint": "Pasirinkite vieną atsakymą",
   "ui.question.custom.placeholder": "Įveskite savo atsakymą…",
   "ui.tool.loadedFile": "Įkelta {{path}}",
   "ui.tool.loadedSkill": "Įkeltas įgūdis {{name}}",

@@ -1,3 +1,6 @@
+import { Match } from "effect"
+import type { JsonValue } from "@opencode/client/promise"
+import type { MockServerConfig } from "../../utils/mock-server"
 import { base64Encode } from "@opencode/util/encode"
 import { benchmark, benchmarkDiagnostics, expect } from "../benchmark"
 import { mockOpenCodeServer } from "../../utils/mock-server"
@@ -52,7 +55,7 @@ benchmark.use({
 
 for (const scenario of ["typing", "cursor-movement", "cursor-noop", "submit-cleanup"] as const) {
   benchmark(`composer-write-batch: ${scenario}`, async ({ page, report }, testInfo) => {
-    const submitted: Record<string, unknown>[] = []
+    const submitted: Array<Parameters<NonNullable<MockServerConfig["onPrompt"]>>[0]["body"]> = []
     await mockOpenCodeServer(page, {
       directory: fixture.directory,
       project: fixture.project,
@@ -67,20 +70,24 @@ for (const scenario of ["typing", "cursor-movement", "cursor-noop", "submit-clea
 
         const probe: Probe = { active: false, encodes: 0, bytes: 0, inputs: 0, keyups: 0 }
 
-        ;(window as ProbeWindow).composerWriteBatch = probe
+        // SAFETY: this init script installs the benchmark-owned probe on its isolated page before any reads.
+        // SAFETY: the benchmark init script installs the probe before this page evaluation.
+      Object.assign(window, { composerWriteBatch: probe })
 
         // The draft adapter parses each schema-encoded composer document once before
         // its asynchronous blob walk. Count at this boundary, not at the IDB write
         // (which already discards superseded writes). This fixture is ASCII only.
         if (counts) {
           const parse = JSON.parse
-          JSON.parse = (value, reviver) => {
-            if (probe.active && typeof value === "string" && value.startsWith('{"prompt":[')) {
+          JSON.parse = (...args: [text: string, reviver?: Parameters<typeof JSON.parse>[1]]) => {
+            const [value] = args
+
+            if (probe.active && value.startsWith('{"prompt":[')) {
               probe.encodes++
               probe.bytes += value.length
             }
 
-            return parse(value, reviver)
+            return args[1] === undefined ? parse(value) : parse(value, args[1])
           }
         }
 
@@ -135,13 +142,16 @@ for (const scenario of ["typing", "cursor-movement", "cursor-noop", "submit-clea
           })
           const index = keys.result.findIndex((key) => String(key).endsWith(`session:${sessionID}:prompt`))
           // Parse after disabling the count so the observation is not part of it.
-          const probe = (window as ProbeWindow).composerWriteBatch
+          // SAFETY: the init script above installs this probe before the benchmark begins.
+          // SAFETY: the benchmark init script installs the probe before this page evaluation.
+      const probe = (window as ProbeWindow).composerWriteBatch
           const active = probe.active
           probe.active = false
           const value = index < 0 ? undefined : JSON.parse(values.result[index])
           probe.active = active
 
-          return value as { prompt: { content: string }[]; cursor: number; context: { items: unknown[] } } | undefined
+          // SAFETY: this isolated fixture stores composer documents in the documents IDB store; only those entries are selected.
+          return value as { prompt: { content: string }[]; cursor: number; context: { items: JsonValue[] } } | undefined
         } finally {
           db.close()
         }
@@ -154,7 +164,9 @@ for (const scenario of ["typing", "cursor-movement", "cursor-noop", "submit-clea
     await benchmarkDiagnostics(page).startTrace()
     const before = await cdp.send("Performance.getMetrics")
     await page.evaluate(() => {
-      ;(window as ProbeWindow).composerWriteBatch.active = true
+      // SAFETY: the benchmark init script installs the probe before this page evaluation.
+      const target = window as ProbeWindow
+      target.composerWriteBatch.active = true
       performance.mark("composer-write-batch-start")
     })
     const start = performance.now()
@@ -166,14 +178,13 @@ for (const scenario of ["typing", "cursor-movement", "cursor-noop", "submit-clea
     if (scenario === "cursor-noop") await editor.press("ArrowRight")
 
     if (scenario === "submit-cleanup") await editor.press("Enter")
-    const expectedText = scenario === "typing" ? text + addition : scenario === "submit-cleanup" ? "" : text
+    const expectedText = { typing: text + addition, "submit-cleanup": "", "cursor-movement": text, "cursor-noop": text }[scenario]
 
-    const expectedCursor =
-      scenario === "typing"
-        ? text.length + addition.length
-        : scenario === "submit-cleanup"
-          ? 0
-          : text.length - Number(scenario === "cursor-movement")
+    const expectedCursor = Match.value(scenario).pipe(
+      Match.when("typing", () => text.length + addition.length),
+      Match.when("submit-cleanup", () => 0),
+      Match.orElse(() => text.length - Number(scenario === "cursor-movement")),
+    )
 
     await expect(editor).toHaveText(expectedText)
     await expect.poll(async () => (await stored())?.cursor).toBe(expectedCursor)
@@ -182,6 +193,7 @@ for (const scenario of ["typing", "cursor-movement", "cursor-noop", "submit-clea
 
     const probe = await page.evaluate(() => {
       performance.mark("composer-write-batch-end")
+      // SAFETY: the benchmark init script installs the probe before this page evaluation.
       const probe = (window as ProbeWindow).composerWriteBatch
       probe.active = false
 

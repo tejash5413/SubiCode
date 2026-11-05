@@ -1,6 +1,6 @@
 import { expect } from "bun:test"
 import { Effect, Layer, Stream } from "effect"
-import { LLMClient, Message } from "@opencode/ai"
+import { LLMClient, Message } from "@opencode/ai/effect"
 import { RequestExecutor } from "@opencode/ai/route"
 import { Agent } from "@opencode/core/agent"
 import { Credential } from "@opencode/core/credential"

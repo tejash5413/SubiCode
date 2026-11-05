@@ -37,6 +37,7 @@ logs/
 *.bun-build
 tsconfig.tsbuildinfo
 /artifacts/
+**/artifacts/
 
 # Native executables are built per platform and distributed as release assets.
 /sdks/vscode/bin/

@@ -1,5 +1,6 @@
 import { expect, type Page, type Request } from "@playwright/test"
 import type { SessionMessageInfo } from "@opencode/client/promise"
+import { Predicate } from "effect"
 import { base64Encode, checksum } from "@opencode/util/encode"
 
 // The mocked default server. Production builds connect to their own origin, so CI points this at the app.
@@ -38,20 +39,25 @@ export type TabSeed =
   | { session: string; server?: string }
   | { draft: string; directory: string; server?: string }
 
+type SeedValue = string | number | boolean | null | undefined | SeedValue[] | SeedRecord
+
+type SeedRecord = { [key: string]: SeedValue }
+
 export type SeedInput = {
   servers?: (string | { url: string; name?: string })[]
-  // Key `local` is the default server; other keys are server origins.
-  projects?: Record<string, { worktree: string; expanded?: boolean }[]>
-  lastProject?: Record<string, string>
+  // Project IDs this client has used, which Home lists. Key `local` is the default server; other keys are origins.
+  usedProjects?: Record<string, string[]>
+  // The directory list builds before the server-backed list kept, which the app migrates to used projects.
+  legacyProjects?: Record<string, { worktree: string; expanded?: boolean }[]>
   // A string is a session ID on the default server.
   tabs?: TabSeed[]
   // Keyed by session ID on the default server.
-  panes?: Record<string, Record<string, unknown>>
-  settings?: Record<string, unknown>
+  panes?: Record<string, SeedRecord>
+  settings?: SeedRecord
   locale?: string
   theme?: { id: string; scheme: "light" | "dark" }
   // Any other storage key. Strings are written as is, other values as JSON.
-  storage?: Record<string, unknown>
+  storage?: SeedRecord
 }
 
 const seeds = { next: 0 }
@@ -66,14 +72,14 @@ export async function seed(page: Page, input: SeedInput) {
       if (sessionStorage.getItem(marker)) return
       sessionStorage.setItem(marker, "1")
 
-      const plain = (value: unknown): value is Record<string, unknown> =>
-        !!value && typeof value === "object" && !Array.isArray(value)
+      const plain = (value: SeedValue): value is SeedRecord =>
+        value !== null && value !== undefined && Object(value) === value && !Array.isArray(value)
 
       entries.forEach(([key, value, merge]) => {
-        const current: unknown = merge ? JSON.parse(localStorage.getItem(key) ?? "null") : undefined
+        const current: SeedValue = merge ? JSON.parse(localStorage.getItem(key) ?? "null") : undefined
 
         if (!plain(current)) return localStorage.setItem(key, value)
-        const next: Record<string, unknown> = JSON.parse(value)
+        const next: SeedRecord = JSON.parse(value)
 
         const merged = Object.entries({ ...current, ...next }).map(([field, item]) => {
           const before = current[field]
@@ -90,32 +96,32 @@ export async function seed(page: Page, input: SeedInput) {
 }
 
 function storageEntries(input: SeedInput): [string, string, boolean][] {
-  const server = {
-    ...(input.servers
-      ? {
-          list: input.servers.map((item) =>
-            typeof item === "string" ? item : { type: "http", displayName: item.name, http: { url: item.url } },
-          ),
-        }
-      : {}),
-    ...(input.projects ? { projects: input.projects } : {}),
-    ...(input.lastProject ? { lastProject: input.lastProject } : {}),
-  }
+  const server: SeedRecord = {}
 
-  const values: Record<string, unknown> = {
-    ...(Object.keys(server).length ? { "opencode.global.dat:server": server } : {}),
-    ...(input.tabs ? { "opencode.window.browser.dat:tabs": input.tabs.map(tabEntry) } : {}),
-    ...(input.panes
-      ? {
-          "opencode.window.browser.dat:tabs.panes": Object.fromEntries(
-            Object.entries(input.panes).map(([sessionID, pane]) => [tabKey(sessionID), pane]),
-          ),
-        }
-      : {}),
-    ...(input.settings ? { "settings.v3": input.settings } : {}),
-    ...(input.locale ? { "opencode.global.dat:language": { locale: input.locale } } : {}),
-    ...(input.theme ? { "subi-theme-id": input.theme.id, "subi-color-scheme": input.theme.scheme } : {}),
-    ...input.storage,
+  if (input.usedProjects) server.usedProjectIDs = input.usedProjects
+
+  if (input.legacyProjects) server.projects = input.legacyProjects
+
+  if (input.servers) server.list = input.servers.map((item) =>
+    Predicate.isString(item) ? item : { type: "http", displayName: item.name, http: { url: item.url } })
+
+  const values: SeedRecord = {}
+  Object.assign(values, input.storage)
+
+  if (Object.keys(server).length) values["opencode.global.dat:server"] = server
+
+  if (input.tabs) values["opencode.window.browser.dat:tabs"] = input.tabs.map(tabEntry)
+
+  if (input.panes) values["opencode.window.browser.dat:tabs.panes"] = Object.fromEntries(
+    Object.entries(input.panes).map(([sessionID, pane]) => [tabKey(sessionID), pane]))
+
+  if (input.settings) values["settings.v3"] = input.settings
+
+  if (input.locale) values["opencode.global.dat:language"] = { locale: input.locale }
+
+  if (input.theme) {
+    values["subi-theme-id"] = input.theme.id
+    values["subi-color-scheme"] = input.theme.scheme
   }
 
   return Object.entries(values).map(([key, value]) => [
@@ -124,20 +130,20 @@ function storageEntries(input: SeedInput): [string, string, boolean][] {
       : key === "settings.v3"
         ? "subi:default:settings.v3"
         : key,
-    typeof value === "string" ? value : JSON.stringify(value),
-    !!value && typeof value === "object" && !Array.isArray(value),
+    Predicate.isString(value) ? value : JSON.stringify(value),
+    Predicate.isObject(value),
   ])
 }
 
 function tabEntry(tab: TabSeed) {
-  if (typeof tab === "string") return { type: "session", server: SERVER, sessionId: tab }
+  if (Predicate.isString(tab)) return { type: "session", server: SERVER, sessionId: tab }
 
   if ("session" in tab) return { type: "session", server: tab.server ?? SERVER, sessionId: tab.session }
 
   return { type: "draft", draftID: tab.draft, server: tab.server ?? SERVER, directory: tab.directory }
 }
 
-export function project(input: { id: string; directory: string; name?: string } & Record<string, unknown>) {
+export function project(input: { id: string; directory: string; name?: string } & SeedRecord) {
   const { directory, ...rest } = input
 
   return {
@@ -145,17 +151,14 @@ export function project(input: { id: string; directory: string; name?: string } 
     canonical: directory,
     name: directory.split(/[\\/]/).at(-1),
     vcs: "git",
-    time: { created: T0, updated: T0 },
-    sandboxes: [] as string[],
+    time: { created: T0, updated: T0, active: T0 },
+    sandboxes: Array<string>(),
     ...rest,
   }
 }
 
 export function session(
-  input: { id: string; directory: string; title?: string; projectID?: string; created?: number } & Record<
-    string,
-    unknown
-  >,
+  input: { id: string; directory: string; title?: string; projectID?: string; created?: number } & SeedRecord,
 ) {
   const { created = T0, ...rest } = input
 
@@ -168,7 +171,7 @@ export function session(
   }
 }
 
-export type ModelSeed = { id: string; name: string } & Record<string, unknown>
+export type ModelSeed = { id: string; name: string } & SeedRecord
 
 // A connected `opencode` provider whose first model is the default.
 export function provider(...models: ModelSeed[]) {

@@ -30,8 +30,8 @@ describe("VercelPlugin", () => {
       yield* addPlugin()
       expect((yield* catalog.get(Provider.ID.make("vercel")))?.headers).toEqual({
         Existing: "1",
-        "http-referer": "https://stlearnsmart.in/",
-        "x-title": "Subi Code",
+        "http-referer": "https://stlearnsmart.in/subi-code",
+        "x-title": "SubiCode",
       })
     }),
   )

@@ -1,4 +1,4 @@
-export const dict: Record<string, string> = {
+export const dict = {
   "ui.sessionReview.title": "Thay đổi phiên",
   "ui.sessionReview.title.git": "Thay đổi Git",
   "ui.sessionReview.title.branch": "Thay đổi nhánh",
@@ -195,7 +195,6 @@ export const dict: Record<string, string> = {
   "ui.question.answer.none": "(không có câu trả lời)",
   "ui.question.review.notAnswered": "(chưa trả lời)",
   "ui.question.multiHint": "Chọn tất cả các câu trả lời phù hợp",
-  "ui.question.singleHint": "Chọn một câu trả lời",
   "ui.question.custom.placeholder": "Nhập câu trả lời của bạn…",
   "ui.tool.loadedFile": "Đã tải {{path}}",
   "ui.tool.loadedSkill": "Đã tải kỹ năng {{name}}",

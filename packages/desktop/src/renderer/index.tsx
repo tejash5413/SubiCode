@@ -2,6 +2,7 @@
 
 import "./diagnostics"
 import "./styles.css"
+import "./subicode-desktop.css"
 import { render } from "solid-js/web"
 import { api } from "./api"
 import { DesktopApp } from "./desktop-app"
