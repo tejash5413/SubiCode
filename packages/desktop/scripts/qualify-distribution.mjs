@@ -283,6 +283,7 @@ try {
     return response.json()
   }, { url: `http://127.0.0.1:${servicePort}`, directory: fixture })
   expect(greeting.data.title).toBe("Greeting")
+  await settings.getByRole("button", { name: "Back to app", exact: true }).click()
   await page.locator(".subi-workspace-nav").getByRole("button", { name: "Recent tasks", exact: true }).click()
   await page.getByText("Greeting", { exact: true }).first().click()
   await expect(page).toHaveTitle("Greeting · SubiCode")
