@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { spawn } from "node:child_process"
 import { gunzipSync } from "node:zlib"
+import { publicNpmArchive } from "./npm-publication.mjs"
 
 const root = path.resolve(process.argv[2])
 const publish = process.argv.includes("--publish")
@@ -115,6 +116,17 @@ if (!publish) {
     })
   }
   for (const item of [...records, wrapper]) {
+    if (item === wrapper) {
+      console.log("Waiting for all six native archives before changing the public installer's latest tag...")
+      await Promise.all(records.map(async native => {
+        const deadline = Date.now() + 15 * 60000
+        while (!await publicNpmArchive("https://registry.npmjs.org", native, expected.version)) {
+          if (Date.now() >= deadline) throw new Error(`npm is still processing ${native.name}; the public installer has not been published`)
+          await new Promise(resolve => setTimeout(resolve, 5000))
+        }
+        console.log(`Public archive verified: ${native.name}@${expected.version}`)
+      }))
+    }
     const existing = await run([
       "view",
       `${item.name}@${expected.version}`,
